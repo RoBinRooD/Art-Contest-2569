@@ -18,10 +18,10 @@
 
   function apiUrl() { return safeGet(URL_STORE) || (window.APP_CONFIG && window.APP_CONFIG.API_URL) || ''; }
 
-  async function call(action, payload = {}, { retries = 2, timeoutMs = 45000 } = {}) {
+  async function call(action, payload = {}, { retries = 2, timeoutMs = 45000, noKey = false } = {}) {
     const url = apiUrl();
     if (!url) throw new ApiError('no_api_url');
-    const body = JSON.stringify({ action, key: safeGet(KEY_STORE), opId: crypto.randomUUID(), ...payload });
+    const body = JSON.stringify({ action, key: noKey ? '' : safeGet(KEY_STORE), opId: crypto.randomUUID(), ...payload });
     let lastErr;
     for (let attempt = 0; attempt <= retries; attempt++) {
       const ctrl = new AbortController();
@@ -67,6 +67,11 @@
     photo_in_use: 'รูปนี้ใช้ในภาพประกาศอยู่',
     unknown_photo: 'ไม่พบรูปนี้ในระบบ (อาจถูกลบไปแล้ว)',
     confirm_needed: 'ยังไม่ได้ยืนยัน',
+    unknown_student: 'ไม่พบนักเรียนคนนี้ในตารางรับสมัครแล้ว',
+    not_found: 'ไม่พบข้อมูล',
+    not_open: 'ยังไม่เปิดให้รับเกียรติบัตร',
+    too_many_tries: 'กรอกผิดหลายครั้ง กรุณารอ 15 นาทีแล้วลองใหม่',
+    busy: 'มีผู้ใช้งานจำนวนมาก กรุณาลองใหม่ในอีกสักครู่',
     bad_value: 'ข้อมูลไม่ถูกต้อง',
     bad_state_key: 'ข้อมูลไม่ถูกต้อง',
     timeout: 'เซิร์ฟเวอร์ตอบช้าเกินไป ลองใหม่อีกครั้ง',

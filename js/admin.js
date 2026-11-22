@@ -7,7 +7,11 @@
     short_clash: 'รหัส 3 ตัวท้ายซ้ำกับทีมอื่น', lookalike_code: 'รหัสคล้ายกันในระดับเดียวกัน (O/0, I/1 ฯลฯ)',
     student_in_two_teams: 'นักเรียนคนเดียวกันอยู่ 2 ทีม', unknown_level: 'ระดับชั้นไม่รู้จัก'
   };
-  const WARN = { no_surname: 'ไม่มีนามสกุล', title_vs_level: 'คำนำหน้าไม่เข้ากับระดับชั้น' };
+  // [label, kind]: 'muted' = information only (valid as is), 'warn' = someone should look
+  const WARN = {
+    no_surname: ['ไม่มีนามสกุล', 'muted'], latin: ['ชื่อภาษาอังกฤษ', 'muted'],
+    mixed_script: ['ชื่อปนไทย-อังกฤษ', 'warn'], title_vs_level: ['คำนำหน้าไม่เข้ากับระดับชั้น', 'warn']
+  };
   const ATTEND = {
     present: ['มาครบ', 'ok'], partial: ['มาไม่ครบ', 'warn'], absent: ['ไม่มา', 'bad'], unknown: ['ยังไม่บันทึก', 'muted']
   };
@@ -147,8 +151,8 @@
     const line = el('div', {}, m.printName);
     if (m.titleState === 'none') line.appendChild(tag('ไม่มีคำนำหน้า', 'warn'));
     if (m.titleState === 'check') line.appendChild(tag('ต้องตรวจ', 'bad'));
-    m.warnings.filter(w => WARN[w]).forEach(w => line.appendChild(tag(WARN[w], 'warn')));
-    if (!m.idOk) line.appendChild(tag('เลขบัตรไม่ครบ', 'warn'));
+    m.warnings.filter(w => WARN[w]).forEach(w => line.appendChild(tag(WARN[w][0], WARN[w][1])));
+    if (!m.idOk) line.appendChild(tag(m.script === 'latin' ? 'ไม่มีเลขบัตร 13 หลัก' : 'เลขบัตรไม่ครบ', m.script === 'latin' ? 'muted' : 'warn'));
     return line;
   }
 
@@ -199,10 +203,7 @@
     }
 
     const names = el('div', { cls: 'ci-names' });
-    t.members.forEach(m => {
-      const absent = a.state === 'absent' || (a.state === 'partial' && a.absent.includes(m.sid));
-      names.appendChild(el('div', { cls: absent ? 'struck' : '' }, m.printName));
-    });
+    t.members.forEach(m => names.appendChild(memberEditLine(t, m, a)));
     card.appendChild(names);
     const btn = (text, cls, fn) => el('button', { cls, text, on: { click: () => guarded(fn) } });
     card.appendChild(el('div', { cls: 'row' },
@@ -211,6 +212,39 @@
       btn('ไม่มา', a.state === 'absent' ? '' : 'secondary', () => Store.set('attend:' + t.code, { state: 'absent' })),
       a.state !== 'unknown' ? btn('ล้าง', 'link', () => Store.set('attend:' + t.code, { state: 'unknown' })) : null));
     return card;
+  }
+
+  /** One member line in the check-in card: name as it will be printed + quick fixes written on the team slip. */
+  function memberEditLine(t, m, a) {
+    const absent = a.state === 'absent' || (a.state === 'partial' && a.absent.includes(m.sid));
+    const key = 'name:' + m.sid;
+    const cur = Store.state[key];
+    const setName = (printName, kind) => guarded(() => Store.set(key, printName === null ? null : { printName, kind }, cur ? cur.v : 0));
+    const line = el('div', { cls: 'ci-line' }, el('span', { cls: absent ? 'struck' : '', text: m.printName }));
+    if (m.override === 'correction') line.appendChild(tag('แก้ชื่อแล้ว', 'ok'));
+    if (m.override === 'substitute') line.appendChild(tag('เปลี่ยนตัว (แทน ' + m.basePrint + ')', 'warn'));
+    if (m.titleState === 'none') {
+      line.appendChild(tag('ไม่มีคำนำหน้า', 'warn'));
+      // Thai titles join the given name; English titles take a space ("Miss Emma")
+      const titles = m.script === 'latin' ? ['Mr.', 'Ms.', 'Miss', 'Master'] : ['เด็กชาย', 'เด็กหญิง', 'นาย', 'นางสาว'];
+      titles.forEach(ti => line.appendChild(el('button', { cls: 'link', text: '+' + ti, on: {
+        click: () => setName(m.script === 'latin' ? ti + ' ' + m.basePrint : ti + m.basePrint, 'correction')
+      } })));
+    }
+    if (m.warnings.includes('latin')) line.appendChild(tag('ชื่อภาษาอังกฤษ', 'muted'));
+    if (m.warnings.includes('no_surname')) line.appendChild(tag('ไม่มีนามสกุล', 'muted'));
+    const actions = el('span', { cls: 'ci-actions' },
+      el('button', { cls: 'link', text: 'แก้ชื่อ', on: { click: () => {
+        const v = prompt('ชื่อที่จะพิมพ์บนเกียรติบัตร (คำนำหน้าติดชื่อ เว้นวรรค 1 ครั้งก่อนนามสกุล)', m.printName);
+        if (v && v.trim() && v.trim() !== m.printName) setName(v.trim(), 'correction');
+      } } }),
+      el('button', { cls: 'link', text: 'เปลี่ยนตัว', on: { click: () => {
+        const v = prompt(`นักเรียนที่มาแข่งแทน ${m.basePrint}\nพิมพ์ชื่อเต็มพร้อมคำนำหน้า เช่น เด็กหญิงสมใจ ใจดี`, '');
+        if (v && v.trim()) setName(v.trim(), 'substitute');
+      } } }),
+      m.override ? el('button', { cls: 'link', text: 'ยกเลิกการแก้', on: { click: () => setName(null) } }) : null);
+    line.appendChild(actions);
+    return line;
   }
 
   // ------------------------------------------------------------ awards tab

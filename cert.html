@@ -6,15 +6,39 @@
   <meta name="robots" content="noindex, nofollow">
   <title>เกียรติบัตรออนไลน์ผู้เข้าร่วมกิจกรรม</title>
   <link rel="stylesheet" href="css/app.css">
+  <style>
+    .cert img { width: 100%; height: auto; border: 1px solid var(--border); border-radius: 6px; display: block; }
+    .cert { margin: 16px 0 24px; }
+    .cert h3 { font-size: 17px; margin: 0 0 6px; }
+    .cert .row { margin-top: 8px; }
+    .lookup input { flex: 1 1 140px; }
+  </style>
 </head>
 <body>
+  <header class="top"><h1>เกียรติบัตรออนไลน์ผู้เข้าร่วมกิจกรรม</h1></header>
   <main>
-    <section class="card" style="margin-top:24px">
-      <h2>เกียรติบัตรออนไลน์ผู้เข้าร่วมกิจกรรม</h2>
-      <p>การประกวดวาดภาพระดับเยาวชน · หลักสูตรศิลปะและการออกแบบ มหาวิทยาลัยราชภัฏเชียงใหม่</p>
-      <div class="banner warn">ยังไม่เปิดให้รับเกียรติบัตร ระบบจะเปิดหลังประกาศผลการแข่งขัน โปรดเก็บหางบัตรที่มี QR นี้ไว้ แล้วสแกนอีกครั้งภายหลัง</div>
-      <p class="muted">ไม่ต้องกรอกข้อมูลใด ๆ ลิงก์นี้เฉพาะของทีมท่าน โปรดอย่าโพสต์ในที่สาธารณะ</p>
+    <div id="inApp" class="banner warn hidden">กำลังเปิดในแอป LINE หรือ Facebook ซึ่งบันทึกรูปไม่ได้ในบางเครื่อง แนะนำให้แตะ ⋮ หรือ ⋯ แล้วเลือก "เปิดในเบราว์เซอร์" (Chrome / Safari)</div>
+    <section class="card">
+      <div class="muted">การประกวดวาดภาพระดับเยาวชน · หลักสูตรศิลปะและการออกแบบ คณะมนุษยศาสตร์และสังคมศาสตร์ มหาวิทยาลัยราชภัฏเชียงใหม่</div>
+      <div id="status" style="margin-top:8px">กำลังโหลด…</div>
+      <div id="team"></div>
+      <div id="certs"></div>
+    </section>
+    <section class="card hidden" id="lookup">
+      <h2>ไม่มี QR หรือหางบัตรหาย</h2>
+      <p class="muted">กรอกรหัสทีม 3 ตัว (บนใบทีม/สติกเกอร์) และเลข 4 ตัวท้ายของเบอร์โทรครูผู้ประสานงานที่ใช้ลงทะเบียน</p>
+      <div class="row lookup">
+        <input type="text" id="lkCode" placeholder="รหัสทีม เช่น WB3" autocomplete="off" maxlength="20">
+        <input type="tel" id="lkPhone" placeholder="เลข 4 ตัวท้ายเบอร์ครู" inputmode="numeric" maxlength="4" autocomplete="off">
+        <button id="lkGo">ค้นหา</button>
+      </div>
+      <p class="muted" id="lkMsg"></p>
     </section>
   </main>
+  <script src="config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/photo.js"></script>
+  <script src="js/cert.js"></script>
 </body>
 </html>

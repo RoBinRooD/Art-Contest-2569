@@ -57,7 +57,18 @@
       return r;
     },
     on(fn) { this.listeners.push(fn); },
-    emit() { this.listeners.forEach(f => f()); }
+    emit() { this.applyNames(); this.listeners.forEach(f => f()); },
+    // Name corrections / substitutions recorded on the day replace the sheet name everywhere (slips, posters, certificates).
+    applyNames() {
+      if (!this.roster) return;
+      this.roster.teams.forEach(t => t.members.forEach(m => {
+        if (m.basePrint === undefined) { m.basePrint = m.printName; m.baseTitleState = m.titleState; }
+        const o = this.val('name:' + m.sid);
+        m.printName = o ? o.printName : m.basePrint;
+        m.titleState = o ? 'auto' : m.baseTitleState;
+        m.override = o ? o.kind : null;
+      }));
+    }
   };
 
   // Present members of a team according to the check-in record (unknown attendance = nobody yet).

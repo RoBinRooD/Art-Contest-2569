@@ -15,6 +15,7 @@
       <button data-tab="checkin">เช็กอิน</button>
       <button data-tab="awards">ผลรางวัล</button>
       <button data-tab="posters">ภาพประกาศ</button>
+      <button data-tab="certs">เกียรติบัตร</button>
       <button data-tab="print">พิมพ์เอกสาร</button>
     </nav>
     <span class="fresh" id="fresh"></span>
@@ -152,6 +153,47 @@
       </div>
     </section>
 
+    <section class="tab hidden" id="tab-certs">
+      <div class="card">
+        <h2>เกียรติบัตรออนไลน์ผู้เข้าร่วมกิจกรรม</h2>
+        <p class="muted">ได้รับ: นักเรียนที่บันทึกว่ามาแข่ง และทีมไม่ได้รางวัล · ทำได้หลังล็อกผล · ครูรับผ่าน QR บนหางบัตร</p>
+        <div id="certSummary"></div>
+      </div>
+      <div class="card">
+        <h2>1. เลือกเทมเพลตและฟอนต์</h2>
+        <p class="muted">เทมเพลตเกียรติบัตรเปล่าไม่ได้อยู่บนเว็บ (กันคนสร้างเกียรติบัตรปลอม) ให้เลือกไฟล์ "เกียรติบัตรผู้เข้าร่วมกิจกรรม.png" จากโฟลเดอร์ข้อมูลในเครื่องนี้
+          ฟอนต์ใช้ตัวเดียวกับภาพประกาศ (ตั้งได้ที่แท็บภาพประกาศ)</p>
+        <div class="row">
+          <label class="btn" for="certTemplate">เลือกไฟล์เทมเพลต</label>
+          <input type="file" id="certTemplate" accept="image/png,image/jpeg" class="hidden">
+          <span class="muted" id="certTemplateStatus">ยังไม่ได้เลือก</span>
+        </div>
+      </div>
+      <div class="card">
+        <h2>2. สร้างและตรวจ</h2>
+        <div class="row">
+          <button class="secondary" id="certPreview">สร้างตัวอย่างทั้งหมด</button>
+          <span class="muted" id="certPreviewMsg"></span>
+        </div>
+        <div class="cert-grid" id="certGrid"></div>
+      </div>
+      <div class="card">
+        <h2>3. เผยแพร่</h2>
+        <p class="muted">อัปโหลดเกียรติบัตรเข้า Drive ของระบบ แล้วกดเปิดให้ดาวน์โหลด ถ้าแก้ชื่อภายหลัง ให้กดอัปโหลดใหม่ ระบบส่งเฉพาะใบที่เปลี่ยน</p>
+        <div class="row">
+          <button id="certPublish">อัปโหลดและเผยแพร่</button>
+          <button class="secondary" id="certOpen"></button>
+          <span class="muted" id="certPublishMsg"></span>
+        </div>
+      </div>
+      <div class="card">
+        <h2>ลิงก์ของแต่ละทีม (กรณีครูทำหางบัตรหาย)</h2>
+        <p class="muted">ครูกรอกรหัสทีม 3 ตัว คู่กับเลข 4 ตัวท้ายเบอร์โทรที่ลงทะเบียนไว้ ที่หน้ารับเกียรติบัตรได้เอง หรือคัดลอกลิงก์ส่งให้ครูโดยตรง</p>
+        <button class="secondary" id="certLinks">แสดงลิงก์ทุกทีม</button>
+        <div id="certLinkList"></div>
+      </div>
+    </section>
+
     <section class="tab hidden" id="tab-print">
       <div class="card">
         <h2>พิมพ์เอกสาร</h2>
@@ -177,5 +219,6 @@
   <script src="js/photo.js"></script>
   <script src="js/poster.js"></script>
   <script src="js/posters.js"></script>
+  <script src="js/certs.js"></script>
 </body>
 </html>

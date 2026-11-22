@@ -44,7 +44,9 @@
       const rows = t.members.map((m, i) => el('tr', {},
         el('td', { cls: 'box', text: String(i + 1) }),
         el('td', {}, el('div', { text: m.printName }),
-          m.titleState !== 'auto' ? el('div', { cls: 'untitled', text: 'ไม่มีคำนำหน้า โปรดวง: เด็กชาย / เด็กหญิง / นาย / นางสาว' }) : null),
+          m.titleState === 'none' && m.script !== 'latin' ? el('div', { cls: 'untitled', text: 'ไม่มีคำนำหน้า โปรดวง: เด็กชาย / เด็กหญิง / นาย / นางสาว' }) : null,
+          m.titleState === 'none' && m.script === 'latin' ? el('div', { cls: 'untitled', text: 'No title — please circle: Mr. / Ms. / Miss / Master · โปรดตรวจตัวสะกด' }) : null,
+          m.titleState === 'check' ? el('div', { cls: 'untitled', text: 'ชื่อปนไทย-อังกฤษ โปรดเขียนชื่อที่ถูกต้องในช่องแก้ไข' }) : null),
         el('td', { cls: 'fix' }),
         el('td', { cls: 'box', text: '☐' })));
       const token = tokens[t.code];
