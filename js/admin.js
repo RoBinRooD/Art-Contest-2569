@@ -326,6 +326,16 @@
   $('refresh').addEventListener('click', refresh);
   $('ciSearch').addEventListener('input', renderCheckin);
   $('forget').addEventListener('click', () => { Api.forget(); showConnected(false); });
+  $('resetTest').addEventListener('click', () => guarded(async () => {
+    const typed = prompt('พิมพ์คำว่า  ล้างข้อมูลทดสอบ  เพื่อยืนยัน\n(ล้างเช็กอิน ผลรางวัล การล็อก รูปทั้งหมด การจัดภาพ และการยืนยัน)');
+    if (typed === null) return;
+    if (typed.trim() !== 'ล้างข้อมูลทดสอบ') { $('resetMsg').textContent = 'พิมพ์ไม่ตรง ยังไม่ได้ล้าง'; return; }
+    $('resetMsg').textContent = 'กำลังล้าง…';
+    const r = await Api.call('resetTestData', { confirm: 'ล้างข้อมูลทดสอบ', actor: App.actor() }, { retries: 0, timeoutMs: 120000 });
+    const c = r.cleared || {};
+    $('resetMsg').textContent = `ล้างแล้ว: เช็กอิน ${c['attend:'] || 0} ทีม · ช่องรางวัล ${c['award:'] || 0} · รูป ${c['photofile:'] || 0} · จัดภาพ ${c['photo:'] || 0}${c.lock ? ' · ปลดล็อกผล' : ''}`;
+    await Store.loadState();
+  }));
   document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
   Store.on(renderAll);
   let saved = 'roster';

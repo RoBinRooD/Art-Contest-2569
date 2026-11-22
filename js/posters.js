@@ -132,12 +132,17 @@
       sel.value = t ? t.code : '';
       sel.addEventListener('change', () => guarded(() => Store.set(p.key, { team: sel.value }, p.v)));
       const usedBy = t && chosen(t.code) && chosen(t.code).sha === p.sha;
+      const del = el('button', { cls: 'link', text: 'ลบรูปนี้', on: { click: () => guarded(async () => {
+        if (!confirm(usedBy ? 'รูปนี้ใช้ในภาพประกาศอยู่ ลบแล้วต้องจัดภาพทีมนี้ใหม่ ยืนยันลบ?' : 'ลบรูปนี้? (ไฟล์จะไปอยู่ในถังขยะ Drive กู้คืนได้ภายใน 30 วัน)')) return;
+        await Api.call('deletePhoto', { sha: p.sha, force: !!usedBy, actor: App.actor() }, { retries: 0 });
+        await Store.loadState();
+      }) } });
       return el('div', { cls: 'lib-item' + (t ? '' : ' unknown') }, lazyThumb(p),
         el('div', { cls: 'lib-meta' },
           t ? el('b', { cls: 'code', text: t.short }) : tag('ไม่พบป้ายรหัส', 'warn'),
           p.teamSource === 'manual' ? tag('ระบุด้วยมือ', 'muted') : null,
           usedBy ? tag('ใช้ในภาพประกาศ', 'ok') : null),
-        sel);
+        sel, del);
     }));
   }
 
