@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>ส่งรูปผลงาน — ระบบเกียรติบัตร 2569</title>
+  <link rel="stylesheet" href="css/app.css">
+  <style>
+    .pick { display: block; width: 100%; font-size: 18px; padding: 16px; margin: 8px 0; text-align: center; }
+    .item { display: flex; gap: 10px; align-items: center; border-bottom: 1px solid var(--border); padding: 8px 0; }
+    .item img { width: 72px; height: 72px; object-fit: cover; border-radius: 6px; background: var(--info-bg); }
+    .item .info { flex: 1; font-size: 15px; }
+    .summary { font-size: 18px; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <header class="top"><h1>ส่งรูปผลงาน</h1></header>
+  <main>
+    <div id="noKey" class="card hidden">
+      <div class="banner bad">ลิงก์นี้ไม่มีคีย์ส่งรูป ให้สแกน QR "ส่งรูป" จากหน้าแอดมินอีกครั้ง</div>
+    </div>
+    <div id="inApp" class="banner warn hidden">กำลังเปิดในแอป (LINE/Facebook) ให้แตะ ⋮ หรือ ⋯ แล้วเลือก "เปิดในเบราว์เซอร์" ก่อนส่งรูป</div>
+    <section class="card" id="main">
+      <p>ถ่ายรูปด้วยแอปกล้องตามปกติให้ครบก่อน แล้วกดปุ่มด้านล่าง เลือกรูปผลงานทั้งหมดพร้อมกันได้เลย ระบบจะอ่านป้ายรหัสทีมในรูปให้เอง</p>
+      <label class="btn pick" for="files">เลือกรูปจากคลังภาพ</label>
+      <input id="files" type="file" accept="image/jpeg,image/png" multiple class="hidden">
+      <p class="muted">อย่าปิดหน้านี้จนกว่าทุกรูปจะขึ้น "ส่งแล้ว" · ห้ามลบรูปในเครื่องจนกว่าจะประกาศผลเสร็จ</p>
+      <div class="summary" id="summary"></div>
+      <div id="list"></div>
+    </section>
+  </main>
+  <script src="config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/vendor/jsQR.js"></script>
+  <script src="js/photo.js"></script>
+  <script src="js/upload.js"></script>
+</body>
+</html>

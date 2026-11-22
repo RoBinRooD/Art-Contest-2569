@@ -14,6 +14,7 @@
       <button data-tab="roster">รายชื่อ</button>
       <button data-tab="checkin">เช็กอิน</button>
       <button data-tab="awards">ผลรางวัล</button>
+      <button data-tab="posters">ภาพประกาศ</button>
       <button data-tab="print">พิมพ์เอกสาร</button>
     </nav>
     <span class="fresh" id="fresh"></span>
@@ -86,6 +87,64 @@
       <div class="card" id="lockCard"></div>
     </section>
 
+    <section class="tab hidden" id="tab-posters">
+      <div class="card">
+        <h2>1. นำรูปเข้าระบบ</h2>
+        <p class="muted">ถ่ายด้วยแอปกล้องปกติ โดยมีป้ายรหัสทีมอยู่ในภาพทุกรูป ระบบจะอ่านรหัสจากป้ายให้เอง</p>
+        <div class="row">
+          <button class="secondary" id="phoneQrBtn">QR สำหรับมือถือที่ถ่ายรูป</button>
+          <label class="btn" for="localFiles">เลือกรูปจากเครื่องนี้</label>
+          <input id="localFiles" type="file" accept="image/jpeg,image/png" multiple class="hidden">
+          <button class="secondary" id="reloadPhotos">โหลดรายการรูปใหม่</button>
+        </div>
+        <div id="phoneQr"></div>
+        <div id="localUploads"></div>
+      </div>
+      <div class="card">
+        <h2>2. รูปทั้งหมด <span class="muted" id="libCount"></span></h2>
+        <p class="muted">รูปที่ "ไม่พบป้ายรหัส" ให้ดูรหัสบนป้ายในรูปแล้วเลือกทีมเอง ห้ามเดา</p>
+        <div class="library" id="library"></div>
+      </div>
+      <div class="card">
+        <h2>3. จัดภาพประกาศ</h2>
+        <div class="row" style="margin-bottom:8px">
+          <div class="seg" id="psLevels"></div>
+          <label><input type="checkbox" id="posterNames"> ใส่ชื่อนักเรียนบนภาพ (ปกติใส่เฉพาะชื่อโรงเรียน ชื่อนักเรียนอยู่ในข้อความโพสต์)</label>
+        </div>
+        <div class="row muted" style="margin-bottom:8px">
+          <span id="fontStatus"></span>
+          <label class="link">ใช้ฟอนต์จากเครื่องนี้ (ไม่อัปโหลด) <input type="file" id="fontFile" accept=".ttf,.otf,.woff,.woff2" class="hidden"></label>
+        </div>
+        <div id="slots"></div>
+      </div>
+      <div class="card hidden" id="editorCard">
+        <h2 id="edTitle"></h2>
+        <div class="row" id="edPhotos" style="margin-bottom:8px"></div>
+        <div class="editor">
+          <div id="edSourceWrap" class="ed-source">
+            <p class="muted">ลากจุดสีขาวทั้ง 4 ไปที่มุมกระดาษผลงาน (ไม่รวมป้ายรหัส)</p>
+            <canvas id="edSource"></canvas>
+            <div class="row">
+              <button class="secondary small" id="edRotL">หมุนซ้าย</button>
+              <button class="secondary small" id="edRotR">หมุนขวา</button>
+              <button class="secondary small" id="edReset">รีเซ็ตมุม</button>
+              <select id="edPaper"><option value="auto">สัดส่วนตามที่ลาก</option><option value="56x38">กระดาษ 38×56 ซม.</option><option value="A3">กระดาษ A3</option></select>
+              <select id="edFit"><option value="auto">วางอัตโนมัติ</option><option value="fill">เต็มกรอบ</option><option value="fit">ทั้งภาพในกรอบ</option></select>
+            </div>
+          </div>
+          <div class="ed-preview" id="edPreview"></div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <button id="edSave">บันทึกภาพนี้</button>
+          <button class="secondary" id="edClose">ปิด</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>4. ตรวจทานและส่งออก</h2>
+        <div id="proof"></div>
+      </div>
+    </section>
+
     <section class="tab hidden" id="tab-print">
       <div class="card">
         <h2>พิมพ์เอกสาร</h2>
@@ -106,5 +165,10 @@
   <script src="js/api.js"></script>
   <script src="js/common.js"></script>
   <script src="js/admin.js"></script>
+  <script src="js/vendor/qrcode.js"></script>
+  <script src="js/vendor/jsQR.js"></script>
+  <script src="js/photo.js"></script>
+  <script src="js/poster.js"></script>
+  <script src="js/posters.js"></script>
 </body>
 </html>

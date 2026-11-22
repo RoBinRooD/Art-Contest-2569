@@ -5,7 +5,10 @@
 - `admin.html` — หน้าแอดมิน: รายชื่อ เช็กอิน ผลรางวัล ล็อกผล (ต้องมีคีย์)
 - `print.html` — ชุดเอกสารพิมพ์ (`print.html?demo=1` = ข้อมูลตัวอย่าง)
 - `cert.html` — หน้ารับเกียรติบัตรผู้เข้าร่วม (เปิดหลังประกาศผล)
+- `upload.html` — หน้าส่งรูปผลงานจากมือถือ (เปิดจาก QR ในหน้าแอดมิน)
 - `js/vendor/qrcode.js` — qrcode-generator 1.4.4 © Kazuhiko Arase, MIT License
+- `js/vendor/jsQR.js` — jsQR 1.4.0, Apache License 2.0
+- `assets/fonts/Mitr-*.ttf` — Mitr © The Mitr Project Authors, SIL Open Font License 1.1 (`Mitr-OFL.txt`)
 
 ห้ามใส่ข้อมูลนักเรียน คีย์ ฟอนต์เชิงพาณิชย์ หรือไฟล์ PDF เกียรติบัตรลงใน repo นี้
 
