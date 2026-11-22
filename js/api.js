@@ -52,6 +52,8 @@
   const MESSAGES = {
     no_api_url: 'ยังไม่ได้ใส่ลิงก์ Apps Script',
     bad_key: 'คีย์ไม่ถูกต้อง',
+    unknown_action: 'โค้ด Apps Script ยังเป็นรุ่นเก่า: วางโค้ดใหม่จาก apps-script\\Code.gs แล้ว Deploy → Manage deployments → ดินสอ → New version',
+    old_api: 'โค้ด Apps Script ยังเป็นรุ่นเก่า: วางโค้ดใหม่จาก apps-script\\Code.gs แล้ว Deploy → Manage deployments → ดินสอ → New version',
     not_set_up: 'ยังไม่ได้รัน setup ใน Apps Script',
     reg_tab_missing: 'ไม่พบแท็บ "ข้อมูล" ในตารางรับสมัคร',
     reg_header_missing: 'ไม่พบหัวคอลัมน์ที่ต้องใช้ในตารางรับสมัคร',

@@ -87,8 +87,13 @@
     const list = $('checks');
     list.replaceChildren(el('li', { cls: 'muted', text: 'กำลังทดสอบ…' }));
     try {
+      const ping = await Api.call('ping', {}, { retries: 0 });
+      const need = window.APP_CONFIG.REQUIRED_API_VERSION;
+      const verOk = String(ping.version || '') === need;
       const r = await Api.call('selftest', {}, { retries: 0 });
-      list.replaceChildren(...r.checks.map(c => el('li', {}, tag(c.ok ? 'ผ่าน' : 'ไม่ผ่าน', c.ok ? 'ok' : 'bad'), ' ' + c.name + ' — ' + c.detail)));
+      list.replaceChildren(
+        el('li', {}, tag(verOk ? 'ผ่าน' : 'ไม่ผ่าน', verOk ? 'ok' : 'bad'), ` รุ่นโค้ด Apps Script — ${ping.version || 'ไม่ทราบ (รุ่นเก่า)'}${verOk ? '' : ' ต้องเป็นรุ่น ' + need + ' · ' + Api.message({ code: 'old_api' })}`),
+        ...r.checks.map(c => el('li', {}, tag(c.ok ? 'ผ่าน' : 'ไม่ผ่าน', c.ok ? 'ok' : 'bad'), ' ' + c.name + ' — ' + c.detail)));
       list.appendChild(el('li', { cls: 'muted', text: 'เวลาตอบกลับ ' + r.ms + ' ms' }));
     } catch (err) {
       list.replaceChildren(el('li', {}, tag('ไม่ผ่าน', 'bad'), ' ' + Api.message(err)));
