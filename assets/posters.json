@@ -1,0 +1,412 @@
+{
+ "posters": [
+  {
+   "id": "primary-1",
+   "level": "primary",
+   "award": 1,
+   "awardLabel": "ชนะเลิศ",
+   "file": "assets/posters/primary-1.png",
+   "width": 3508,
+   "height": 4961,
+   "sha256": "a87356ae67d894c0bd3a4f75bc3ea103ded9fa3578d4caac5518679da7dacbf7",
+   "frame": [
+    [
+     57,
+     2306
+    ],
+    [
+     3436,
+     2306
+    ],
+    [
+     3454,
+     4556
+    ],
+    [
+     75,
+     4556
+    ]
+   ],
+   "captionBand": {
+    "x0": 150,
+    "x1": 2560,
+    "y0": 1936,
+    "y1": 2290
+   }
+  },
+  {
+   "id": "primary-4",
+   "level": "primary",
+   "award": 4,
+   "awardLabel": "ชมเชย",
+   "file": "assets/posters/primary-4.png",
+   "width": 3508,
+   "height": 4961,
+   "sha256": "288a625012fef88ce64d8d98e282a761123a6e4bf6b4e4864e880941a89abe88",
+   "frame": [
+    [
+     54,
+     2276
+    ],
+    [
+     3433,
+     2276
+    ],
+    [
+     3451,
+     4526
+    ],
+    [
+     72,
+     4526
+    ]
+   ],
+   "captionBand": {
+    "x0": 150,
+    "x1": 2560,
+    "y0": 1906,
+    "y1": 2260
+   }
+  },
+  {
+   "id": "primary-2",
+   "level": "primary",
+   "award": 2,
+   "awardLabel": "รองชนะเลิศอันดับ 1",
+   "file": "assets/posters/primary-2.png",
+   "width": 3508,
+   "height": 4961,
+   "sha256": "7bc467926beb3a06ee11319ccc87fdd0eaabd18b5961178e6d80f9f078748fc6",
+   "frame": [
+    [
+     57,
+     2306
+    ],
+    [
+     3436,
+     2306
+    ],
+    [
+     3454,
+     4556
+    ],
+    [
+     75,
+     4556
+    ]
+   ],
+   "captionBand": {
+    "x0": 150,
+    "x1": 2560,
+    "y0": 1936,
+    "y1": 2290
+   }
+  },
+  {
+   "id": "primary-3",
+   "level": "primary",
+   "award": 3,
+   "awardLabel": "รองชนะเลิศอันดับ 2",
+   "file": "assets/posters/primary-3.png",
+   "width": 3508,
+   "height": 4961,
+   "sha256": "803c2d73e1de7043f7bbe96bcd6fd33c543f3132dc4cf6eca55a08bf5cbe2f04",
+   "frame": [
+    [
+     54,
+     2276
+    ],
+    [
+     3433,
+     2276
+    ],
+    [
+     3451,
+     4526
+    ],
+    [
+     72,
+     4526
+    ]
+   ],
+   "captionBand": {
+    "x0": 150,
+    "x1": 2560,
+    "y0": 1906,
+    "y1": 2260
+   }
+  },
+  {
+   "id": "m1-1",
+   "level": "m1",
+   "award": 1,
+   "awardLabel": "ชนะเลิศ",
+   "file": "assets/posters/m1-1.png",
+   "width": 3508,
+   "height": 4961,
+   "sha256": "6c1fed9248734ef8aba002af98105592399c2768865b1e1594896590c30438c8",
+   "frame": [
+    [
+     57,
+     2306
+    ],
+    [
+     3436,
+     2306
+    ],
+    [
+     3454,
+     4556
+    ],
+    [
+     75,
+     4556
+    ]
+   ],
+   "captionBand": {
+    "x0": 150,
+    "x1": 2560,
+    "y0": 1936,
+    "y1": 2290
+   }
+  },
+  {
+   "id": "m1-4",
+   "level": "m1",
+   "award": 4,
+   "awardLabel": "ชมเชย",
+   "file": "assets/posters/m1-4.png",
+   "width": 3508,
+   "height": 4961,
+   "sha256": "472e70a91fb33b1eca76720a5c1e35127945c34805b9367c9d36b6df85ddc2ee",
+   "frame": [
+    [
+     54,
+     2276
+    ],
+    [
+     3433,
+     2276
+    ],
+    [
+     3451,
+     4526
+    ],
+    [
+     72,
+     4526
+    ]
+   ],
+   "captionBand": {
+    "x0": 150,
+    "x1": 2560,
+    "y0": 1906,
+    "y1": 2260
+   }
+  },
+  {
+   "id": "m1-2",
+   "level": "m1",
+   "award": 2,
+   "awardLabel": "รองชนะเลิศอันดับ 1",
+   "file": "assets/posters/m1-2.png",
+   "width": 3508,
+   "height": 4961,
+   "sha256": "9cb4fa4abbc95e8c736abd8e4fdf8b76f17c1151264f47b9f17ff18381aefeb7",
+   "frame": [
+    [
+     57,
+     2306
+    ],
+    [
+     3436,
+     2306
+    ],
+    [
+     3454,
+     4556
+    ],
+    [
+     75,
+     4556
+    ]
+   ],
+   "captionBand": {
+    "x0": 150,
+    "x1": 2560,
+    "y0": 1936,
+    "y1": 2290
+   }
+  },
+  {
+   "id": "m1-3",
+   "level": "m1",
+   "award": 3,
+   "awardLabel": "รองชนะเลิศอันดับ 2",
+   "file": "assets/posters/m1-3.png",
+   "width": 3508,
+   "height": 4961,
+   "sha256": "1535807b3f35b282990f3c488b59cd1a710724549b914d80bc69eb53d0b46c4d",
+   "frame": [
+    [
+     54,
+     2276
+    ],
+    [
+     3433,
+     2276
+    ],
+    [
+     3451,
+     4526
+    ],
+    [
+     72,
+     4526
+    ]
+   ],
+   "captionBand": {
+    "x0": 150,
+    "x1": 2560,
+    "y0": 1906,
+    "y1": 2260
+   }
+  },
+  {
+   "id": "m4-1",
+   "level": "m4",
+   "award": 1,
+   "awardLabel": "ชนะเลิศ",
+   "file": "assets/posters/m4-1.png",
+   "width": 3508,
+   "height": 4961,
+   "sha256": "e670b4d66b3278f43307f67ea3e89bd5bf7cfab46be33c53c02baa762f9b1178",
+   "frame": [
+    [
+     57,
+     2306
+    ],
+    [
+     3436,
+     2306
+    ],
+    [
+     3454,
+     4556
+    ],
+    [
+     75,
+     4556
+    ]
+   ],
+   "captionBand": {
+    "x0": 150,
+    "x1": 2560,
+    "y0": 1936,
+    "y1": 2290
+   }
+  },
+  {
+   "id": "m4-4",
+   "level": "m4",
+   "award": 4,
+   "awardLabel": "ชมเชย",
+   "file": "assets/posters/m4-4.png",
+   "width": 3508,
+   "height": 4961,
+   "sha256": "3230ae0d1db57b67d508f0f8afcfbb12bbd3bdbf022dfa57717642e455e641aa",
+   "frame": [
+    [
+     54,
+     2276
+    ],
+    [
+     3433,
+     2276
+    ],
+    [
+     3451,
+     4526
+    ],
+    [
+     72,
+     4526
+    ]
+   ],
+   "captionBand": {
+    "x0": 150,
+    "x1": 2560,
+    "y0": 1906,
+    "y1": 2260
+   }
+  },
+  {
+   "id": "m4-2",
+   "level": "m4",
+   "award": 2,
+   "awardLabel": "รองชนะเลิศอันดับ 1",
+   "file": "assets/posters/m4-2.png",
+   "width": 3508,
+   "height": 4961,
+   "sha256": "96491bc30e70798621db12b726b36d37e87ceed0fcb172725b49e29b4def0287",
+   "frame": [
+    [
+     57,
+     2306
+    ],
+    [
+     3436,
+     2306
+    ],
+    [
+     3454,
+     4556
+    ],
+    [
+     75,
+     4556
+    ]
+   ],
+   "captionBand": {
+    "x0": 150,
+    "x1": 2560,
+    "y0": 1936,
+    "y1": 2290
+   }
+  },
+  {
+   "id": "m4-3",
+   "level": "m4",
+   "award": 3,
+   "awardLabel": "รองชนะเลิศอันดับ 2",
+   "file": "assets/posters/m4-3.png",
+   "width": 3508,
+   "height": 4961,
+   "sha256": "2f30adc47cbb6b66730866617e04280136353e54fcf51354f3b33a09bf981865",
+   "frame": [
+    [
+     54,
+     2276
+    ],
+    [
+     3433,
+     2276
+    ],
+    [
+     3451,
+     4526
+    ],
+    [
+     72,
+     4526
+    ]
+   ],
+   "captionBand": {
+    "x0": 150,
+    "x1": 2560,
+    "y0": 1906,
+    "y1": 2260
+   }
+  }
+ ]
+}

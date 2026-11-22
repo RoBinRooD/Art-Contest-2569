@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>แอดมิน — ระบบเกียรติบัตร 2569</title>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <header class="top">
+    <h1>ระบบเกียรติบัตรและประกาศผล · แอดมิน</h1>
+    <span class="fresh" id="fresh"></span>
+  </header>
+  <main>
+    <section class="card" id="connect">
+      <h2>เชื่อมต่อระบบ</h2>
+      <p class="muted">ใส่ลิงก์ Web app ของ Apps Script (ลงท้ายด้วย /exec) และคีย์แอดมินจาก Execution log ครั้งเดียวต่อเครื่อง ระบบจะจำไว้ในเบราว์เซอร์นี้</p>
+      <div class="row" style="margin-bottom:8px">
+        <input type="url" id="apiUrl" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off">
+      </div>
+      <div class="row">
+        <input type="password" id="adminKey" placeholder="คีย์แอดมิน" autocomplete="off">
+        <button id="saveConn">บันทึกและทดสอบ</button>
+      </div>
+      <p class="muted" id="connMsg"></p>
+    </section>
+
+    <section class="card hidden" id="health">
+      <div class="row" style="justify-content:space-between">
+        <h2>ทดสอบระบบ</h2>
+        <div class="row">
+          <button class="secondary" id="runTest">ทดสอบระบบ</button>
+          <button class="secondary" id="forget">ออกจากระบบเครื่องนี้</button>
+        </div>
+      </div>
+      <ul class="checks" id="checks"><li class="muted">กด "ทดสอบระบบ" ก่อนเริ่มงานทุกครั้ง</li></ul>
+    </section>
+
+    <section class="card hidden" id="rosterCard">
+      <div class="row" style="justify-content:space-between">
+        <h2>รายชื่อจากตารางรับสมัคร (อ่านสด)</h2>
+        <button id="refresh">อ่านตารางใหม่</button>
+      </div>
+      <div id="rosterBanner"></div>
+      <div class="stats" id="stats"></div>
+      <div id="problems" style="margin-top:12px"></div>
+      <div style="overflow-x:auto; margin-top:12px">
+        <table>
+          <thead><tr><th>รหัส</th><th>ระดับ</th><th>โรงเรียน</th><th>ชื่อที่จะพิมพ์</th><th class="hide-sm">สถานะ</th></tr></thead>
+          <tbody id="teams"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+  <script src="config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>
