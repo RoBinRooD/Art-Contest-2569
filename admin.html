@@ -10,14 +10,24 @@
 <body>
   <header class="top">
     <h1>ระบบเกียรติบัตรและประกาศผล · แอดมิน</h1>
+    <nav class="tabs hidden" id="tabs">
+      <button data-tab="roster">รายชื่อ</button>
+      <button data-tab="checkin">เช็กอิน</button>
+      <button data-tab="awards">ผลรางวัล</button>
+      <button data-tab="print">พิมพ์เอกสาร</button>
+    </nav>
     <span class="fresh" id="fresh"></span>
+    <button class="secondary small hidden" id="refresh">อ่านตารางใหม่</button>
   </header>
   <main>
     <section class="card" id="connect">
       <h2>เชื่อมต่อระบบ</h2>
-      <p class="muted">ใส่ลิงก์ Web app ของ Apps Script (ลงท้ายด้วย /exec) และคีย์แอดมินจาก Execution log ครั้งเดียวต่อเครื่อง ระบบจะจำไว้ในเบราว์เซอร์นี้</p>
+      <p class="muted">ใส่คีย์แอดมินจาก Execution log ครั้งเดียวต่อเครื่อง ระบบจะจำไว้ในเบราว์เซอร์นี้ (อย่าทำบนเครื่องสาธารณะ)</p>
       <div class="row" style="margin-bottom:8px">
         <input type="url" id="apiUrl" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off">
+      </div>
+      <div class="row" style="margin-bottom:8px">
+        <input type="text" id="actorName" placeholder="ชื่อผู้ใช้งาน (บันทึกในประวัติการแก้ไข)" autocomplete="off">
       </div>
       <div class="row">
         <input type="password" id="adminKey" placeholder="คีย์แอดมิน" autocomplete="off">
@@ -26,35 +36,75 @@
       <p class="muted" id="connMsg"></p>
     </section>
 
-    <section class="card hidden" id="health">
-      <div class="row" style="justify-content:space-between">
-        <h2>ทดสอบระบบ</h2>
-        <div class="row">
-          <button class="secondary" id="runTest">ทดสอบระบบ</button>
-          <button class="secondary" id="forget">ออกจากระบบเครื่องนี้</button>
+    <div id="globalBanner"></div>
+
+    <section class="tab hidden" id="tab-roster">
+      <div class="card">
+        <div class="row" style="justify-content:space-between">
+          <h2>ทดสอบระบบ</h2>
+          <div class="row">
+            <button class="secondary" id="runTest">ทดสอบระบบ</button>
+            <button class="secondary" id="forget">ออกจากระบบเครื่องนี้</button>
+          </div>
+        </div>
+        <ul class="checks" id="checks"><li class="muted">กด "ทดสอบระบบ" ก่อนเริ่มงานทุกครั้ง</li></ul>
+      </div>
+      <div class="card">
+        <h2>รายชื่อจากตารางรับสมัคร (อ่านสด)</h2>
+        <div id="rosterBanner"></div>
+        <div class="stats" id="stats"></div>
+        <div id="problems" style="margin-top:12px"></div>
+        <div style="overflow-x:auto; margin-top:12px">
+          <table>
+            <thead><tr><th>รหัส</th><th>ระดับ</th><th>โรงเรียน</th><th>ชื่อที่จะพิมพ์</th><th class="hide-sm">สถานะ</th></tr></thead>
+            <tbody id="teams"></tbody>
+          </table>
         </div>
       </div>
-      <ul class="checks" id="checks"><li class="muted">กด "ทดสอบระบบ" ก่อนเริ่มงานทุกครั้ง</li></ul>
     </section>
 
-    <section class="card hidden" id="rosterCard">
-      <div class="row" style="justify-content:space-between">
-        <h2>รายชื่อจากตารางรับสมัคร (อ่านสด)</h2>
-        <button id="refresh">อ่านตารางใหม่</button>
+    <section class="tab hidden" id="tab-checkin">
+      <div class="card">
+        <h2>เช็กอิน (คีย์จากใบทีมที่ครูเซ็น)</h2>
+        <p class="muted">ใบทีมที่ครูไม่ได้แก้อะไร กด "มาครบ" ได้เลย ใบที่ขีดชื่อคนที่ไม่มา กด "มาไม่ครบ" แล้วติ๊กคนที่ไม่มา ทีมที่ไม่มาเลยกด "ไม่มา"</p>
+        <div class="row" style="margin:8px 0">
+          <div class="seg" id="ciLevels"></div>
+          <input type="text" id="ciSearch" placeholder="ค้นรหัส 3 ตัว หรือชื่อโรงเรียน" autocomplete="off">
+        </div>
+        <div class="stats" id="ciStats"></div>
+        <div id="ciList" style="margin-top:12px"></div>
       </div>
-      <div id="rosterBanner"></div>
-      <div class="stats" id="stats"></div>
-      <div id="problems" style="margin-top:12px"></div>
-      <div style="overflow-x:auto; margin-top:12px">
-        <table>
-          <thead><tr><th>รหัส</th><th>ระดับ</th><th>โรงเรียน</th><th>ชื่อที่จะพิมพ์</th><th class="hide-sm">สถานะ</th></tr></thead>
-          <tbody id="teams"></tbody>
-        </table>
+    </section>
+
+    <section class="tab hidden" id="tab-awards">
+      <div class="card">
+        <h2>ผลรางวัล (คีย์จากแบบฟอร์มที่ประธานกรรมการเซ็น)</h2>
+        <p class="muted">เลือกทีมจากรายการของระดับนั้น ระบบไม่ยอมให้ทีมเดียวได้ 2 รางวัล ชมเชยเพิ่มหรือลดได้ ช่องที่ไม่มีผู้ได้รับรางวัลให้กด "ลบช่อง"</p>
+        <div class="row" style="margin:8px 0"><div class="seg" id="awLevels"></div></div>
+        <div id="awList"></div>
+      </div>
+      <div class="card" id="lockCard"></div>
+    </section>
+
+    <section class="tab hidden" id="tab-print">
+      <div class="card">
+        <h2>พิมพ์เอกสาร</h2>
+        <p class="muted">เปิดหน้าพิมพ์แล้วกด Ctrl+P ตั้งกระดาษ A4 ขนาดจริง (Actual size / 100%) ทุกแผ่นมีเวลาของข้อมูลพิมพ์ไว้ที่ท้ายหน้า</p>
+        <div class="print-links">
+          <a class="btn" href="print.html#slips" target="_blank" rel="noopener">ใบทีม (เช็กอิน + หางบัตรเกียรติบัตร)</a>
+          <a class="btn" href="print.html#stickers" target="_blank" rel="noopener">สติกเกอร์หลังภาพ</a>
+          <a class="btn" href="print.html#cards" target="_blank" rel="noopener">ป้ายรหัสทีม (วางในภาพถ่าย)</a>
+          <a class="btn" href="print.html#judges" target="_blank" rel="noopener">แบบฟอร์มผลรางวัลสำหรับกรรมการ</a>
+          <a class="btn" href="print.html#master" target="_blank" rel="noopener">ใบรายชื่อรวม (สำรองเช็กอิน)</a>
+          <a class="btn" href="print.html#station" target="_blank" rel="noopener">คู่มือจุดถ่ายภาพ</a>
+          <a class="btn" href="print.html#mc" target="_blank" rel="noopener">รายชื่อสำหรับพิธีกร (หลังล็อกผล)</a>
+        </div>
       </div>
     </section>
   </main>
   <script src="config.js"></script>
   <script src="js/api.js"></script>
+  <script src="js/common.js"></script>
   <script src="js/admin.js"></script>
 </body>
 </html>

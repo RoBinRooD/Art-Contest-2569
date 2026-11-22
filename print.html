@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>พิมพ์เอกสาร — ระบบเกียรติบัตร 2569</title>
+  <link rel="stylesheet" href="css/print.css">
+</head>
+<body>
+  <div class="toolbar no-print">
+    <a href="admin.html">← กลับหน้าแอดมิน</a>
+    <select id="section">
+      <option value="slips">ใบทีม (เช็กอิน + หางบัตรเกียรติบัตร)</option>
+      <option value="stickers">สติกเกอร์หลังภาพ</option>
+      <option value="cards">ป้ายรหัสทีม (วางในภาพถ่าย)</option>
+      <option value="judges">แบบฟอร์มผลรางวัลสำหรับกรรมการ</option>
+      <option value="master">ใบรายชื่อรวม (สำรองเช็กอิน)</option>
+      <option value="station">คู่มือจุดถ่ายภาพ</option>
+      <option value="mc">รายชื่อสำหรับพิธีกร</option>
+    </select>
+    <button id="printBtn">พิมพ์ (Ctrl+P)</button>
+    <span id="status">กำลังโหลด…</span>
+    <div class="hint">ตั้งค่าพิมพ์: กระดาษ A4 · Scale 100% (ขนาดจริง) · Margins: Default · เปิด Background graphics</div>
+  </div>
+  <div id="out"></div>
+  <div class="page-footer" id="footer"></div>
+  <script src="config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/vendor/qrcode.js"></script>
+  <script src="js/print.js"></script>
+</body>
+</html>

@@ -31,7 +31,7 @@
         const text = await res.text();
         let data;
         try { data = JSON.parse(text); } catch (e) { throw new ApiError('not_json', text.slice(0, 120)); }
-        if (!data.ok) throw new ApiError(data.error || 'error', data);
+        if (!data.ok) throw new ApiError(data.error || 'error', data.detail || data.entry || null);
         return data;
       } catch (err) {
         lastErr = err instanceof ApiError ? err : new ApiError(err.name === 'AbortError' ? 'timeout' : 'network', String(err));
@@ -56,6 +56,14 @@
     reg_tab_missing: 'ไม่พบแท็บ "ข้อมูล" ในตารางรับสมัคร',
     reg_header_missing: 'ไม่พบหัวคอลัมน์ที่ต้องใช้ในตารางรับสมัคร',
     team_count_dropped: 'จำนวนทีมที่อ่านได้ลดลงผิดปกติ',
+    conflict: 'มีคนแก้ช่องนี้ก่อนหน้าแล้ว ระบบโหลดค่าล่าสุดให้ ตรวจแล้วทำใหม่',
+    results_locked: 'ล็อกผลแล้ว ต้องปลดล็อกก่อนจึงแก้ผลรางวัลได้',
+    team_has_award: 'ทีมนี้ได้รางวัลอื่นอยู่แล้ว',
+    wrong_level: 'ทีมนี้ไม่ได้อยู่ในระดับชั้นนี้',
+    unknown_team: 'ไม่พบทีมนี้ในตารางรับสมัคร',
+    cannot_lock: 'ยังล็อกผลไม่ได้',
+    bad_value: 'ข้อมูลไม่ถูกต้อง',
+    bad_state_key: 'ข้อมูลไม่ถูกต้อง',
     timeout: 'เซิร์ฟเวอร์ตอบช้าเกินไป ลองใหม่อีกครั้ง',
     network: 'เชื่อมต่อไม่ได้ ตรวจอินเทอร์เน็ต',
     not_json: 'เซิร์ฟเวอร์ตอบกลับผิดรูปแบบ (ตรวจว่าเปิดสิทธิ์ Anyone แล้ว)',
