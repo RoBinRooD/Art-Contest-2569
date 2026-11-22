@@ -9,6 +9,8 @@
     --accent: #aab0ff; --ok: #7fd197; --ok-bg: #1d3325; --warn: #f2c46b; --warn-bg: #3a2f17;
     --bad: #f09595; --bad-bg: #3d1f1f; --info-bg: #262a45;
   }
+  button { color: #15172e; }
+  button.secondary { color: var(--accent); }
 }
 * { box-sizing: border-box; }
 body {
