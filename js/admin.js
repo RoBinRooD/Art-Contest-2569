@@ -335,6 +335,7 @@
         el('div', { cls: 'banner ok', text: `ล็อกโดย ${lock.value.by} เมื่อ ${App.dateTimeOf(lock.at)} — แก้ผลรางวัลไม่ได้จนกว่าจะปลดล็อก (การเช็กอินยังแก้ได้)` }),
         el('div', { cls: 'row' },
           el('a', { cls: 'btn', text: 'พิมพ์รายชื่อสำหรับพิธีกร', attrs: { href: 'print.html#mc', target: '_blank', rel: 'noopener' } }),
+          el('button', { cls: 'secondary', text: 'ดาวน์โหลดรายชื่อสำหรับทำเกียรติบัตรรางวัล', on: { click: downloadWinners } }),
           el('button', { cls: 'secondary', text: 'ปลดล็อก', on: { click: () => guarded(async () => {
             if (!confirm('ปลดล็อกผล? ใช้เมื่อต้องแก้ผลรางวัลเท่านั้น')) return;
             await Store.set('lock', { locked: false }, lock.v);
@@ -349,6 +350,28 @@
         await Store.set('lock', { locked: true }, lock ? lock.v : 0);
         flash('ล็อกผลแล้ว', 'ok');
       }) } }));
+  }
+
+  /**
+   * winners.json for tools/award_pdfs.py: one entry per award, with every member's print name and whether they
+   * were checked in. Saved only to this computer (it contains children's names); never upload it anywhere public.
+   */
+  function downloadWinners() {
+    const awards = [];
+    LEVEL_ORDER.forEach(level => Store.awardRows(level).filter(r => r.team).forEach(r => {
+      const t = Store.team(r.team);
+      if (!t) return;
+      const present = new Set(App.presentMembers(t).map(m => m.sid));
+      awards.push({
+        level, award: r.award, order: r.order, awardLabel: AWARD_LABEL[r.award], team: t.code, short: t.short, school: t.school,
+        members: t.members.map(m => ({ sid: m.sid, printName: m.printName, present: present.has(m.sid), script: m.script || 'thai' }))
+      });
+    }));
+    const data = { kind: 'award-certificates', generatedAt: new Date().toISOString(), rosterReadAt: Store.roster.readAt,
+      locked: Store.locked(), awards };
+    const blob = new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' });
+    const a = el('a', { attrs: { href: URL.createObjectURL(blob), download: 'winners.json' } });
+    document.body.appendChild(a); a.click(); a.remove();
   }
 
   // ------------------------------------------------------------ start
