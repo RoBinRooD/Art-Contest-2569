@@ -14,12 +14,21 @@
   // ---------------------------------------------------------------- data helpers
   const photofiles = () => Object.keys(Store.state).filter(k => k.startsWith('photofile:') && Store.state[k].value)
     .map(k => ({ key: k, sha: k.slice(10), v: Store.state[k].v, at: Store.state[k].at, ...Store.state[k].value }));
+  // A photo's team: the full code read from the card QR, or a code the photographer typed on the phone
+  // (usually the 3 characters on the card, matched leniently for O/0, I/1 ...). A typed code that fits
+  // no team, or more than one, stays unassigned for the admin to pick.
   function resolveTeam(guess) {
     if (!guess || !Store.roster) return null;
     const g = guess.toUpperCase();
-    return Store.roster.teams.find(t => t.code.toUpperCase() === g) || null;
+    const exact = Store.roster.teams.find(t => t.code.toUpperCase() === g);
+    if (exact) return exact;
+    const f = App.fold(g);
+    const hits = Store.roster.teams.filter(t => App.fold(t.short) === f || App.fold(t.code) === f);
+    return hits.length === 1 ? hits[0] : null;
   }
-  const photosOfTeam = code => photofiles().filter(p => { const t = resolveTeam(p.team); return t && t.code === code; });
+  const typedCode = p => { const m = /^\[ทีม ([A-Z0-9-]+)\]/.exec(p.name || ''); return m ? m[1] : ''; };
+  const photoTeam = p => resolveTeam(p.team) || (!p.team && p.teamSource !== 'manual' ? resolveTeam(typedCode(p)) : null);
+  const photosOfTeam = code => photofiles().filter(p => { const t = photoTeam(p); return t && t.code === code; });
   const chosen = code => Store.val('photo:' + code);
   const posterNamesOn = () => !!Store.val('setting:posterNames');
   const hideNames = code => !!Store.val('hidenames:' + code);
@@ -47,11 +56,28 @@
     return h.toString(16);
   }
 
+  // At most a few thumbnail requests at a time: hundreds of simultaneous calls make Apps Script refuse them.
+  const THUMB_PARALLEL = 4;
+  let thumbActive = 0;
+  const thumbQueue = [];
+  function thumbSlot() {
+    if (thumbActive < THUMB_PARALLEL) { thumbActive++; return Promise.resolve(); }
+    return new Promise(res => thumbQueue.push(res));
+  }
+  function thumbDone() { const next = thumbQueue.shift(); if (next) next(); else thumbActive--; }
+
   async function thumbUrl(p) {
-    if (!thumbCache.has(p.sha)) thumbCache.set(p.sha, (async () => {
-      const r = await Api.call('getPhoto', { fileId: p.thumbId || p.fileId });
-      return URL.createObjectURL(Photo.base64ToBlob(r.data));
-    })());
+    if (!thumbCache.has(p.sha)) {
+      const job = (async () => {
+        await thumbSlot();
+        try {
+          const r = await Api.call('getPhoto', { fileId: p.thumbId || p.fileId });
+          return URL.createObjectURL(Photo.base64ToBlob(r.data));
+        } finally { thumbDone(); }
+      })();
+      thumbCache.set(p.sha, job);
+      job.catch(() => thumbCache.delete(p.sha));   // a failed thumbnail is tried again next time it is shown
+    }
     return thumbCache.get(p.sha);
   }
 
@@ -66,9 +92,17 @@
     return fullCache.get(sha);
   }
 
+  // Thumbnails load only when they scroll into view.
+  const thumbSeen = 'IntersectionObserver' in window ? new IntersectionObserver(entries => entries.forEach(e => {
+    if (!e.isIntersecting) return;
+    thumbSeen.unobserve(e.target);
+    e.target._load();
+  }), { rootMargin: '300px' }) : null;
+
   function lazyThumb(p, cls = 'thumb') {
     const img = el('img', { cls, attrs: { alt: '' } });
-    thumbUrl(p).then(u => { img.src = u; }).catch(() => { img.alt = 'โหลดไม่ได้'; });
+    img._load = () => thumbUrl(p).then(u => { img.src = u; }).catch(() => { img.alt = 'โหลดไม่ได้'; });
+    if (thumbSeen) thumbSeen.observe(img); else img._load();
     return img;
   }
 
@@ -122,14 +156,27 @@
   // ---------------------------------------------------------------- photo library
   function renderLibrary() {
     const all = photofiles().sort((a, b) => (a.at < b.at ? 1 : -1));
-    const unknown = all.filter(p => !resolveTeam(p.team));
+    const unknown = all.filter(p => !photoTeam(p));
     $('libCount').textContent = `${all.length} รูป · ระบุทีมไม่ได้ ${unknown.length} รูป`;
     const teams = Store.activeTeams();
     $('library').replaceChildren(...all.map(p => {
-      const t = resolveTeam(p.team);
+      const t = photoTeam(p);
+      // The full team list is added only when the menu is opened: hundreds of photos x hundreds of teams
+      // as ready-made options froze the page.
+      const label = x => `${x.short} · ${LEVEL_SHORT[x.levelKey]}`;
       const sel = el('select', {}, el('option', { text: t ? '' : '— ระบุทีม —', attrs: { value: '' } }),
-        ...teams.map(x => el('option', { text: `${x.short} · ${LEVEL_SHORT[x.levelKey]}`, attrs: { value: x.code } })));
+        t ? el('option', { text: label(t), attrs: { value: t.code } }) : null);
       sel.value = t ? t.code : '';
+      const fill = () => {
+        if (sel.dataset.full) return;
+        sel.dataset.full = '1';
+        sel.replaceChildren(el('option', { text: t ? '' : '— ระบุทีม —', attrs: { value: '' } }),
+          ...teams.map(x => el('option', { text: label(x), attrs: { value: x.code } })));
+        sel.value = t ? t.code : '';
+      };
+      sel.addEventListener('mousedown', fill);
+      sel.addEventListener('focus', fill);
+      sel.addEventListener('keydown', fill);
       sel.addEventListener('change', () => guarded(() => Store.set(p.key, { team: sel.value }, p.v)));
       const usedBy = t && chosen(t.code) && chosen(t.code).sha === p.sha;
       const del = el('button', { cls: 'link', text: 'ลบรูปนี้', on: { click: () => guarded(async () => {
@@ -141,6 +188,8 @@
         el('div', { cls: 'lib-meta' },
           t ? el('b', { cls: 'code', text: t.short }) : tag('ไม่พบป้ายรหัส', 'warn'),
           p.teamSource === 'manual' ? tag('ระบุด้วยมือ', 'muted') : null,
+          p.teamSource !== 'manual' && t && !/^[A-Z0-9]{2,12}-[A-Z0-9]{2,8}$/.test(String(p.team || '').toUpperCase()) ? tag('ช่างภาพกรอกรหัส', 'muted') : null,
+          !t && typedCode(p) ? tag(`ช่างภาพกรอก ${typedCode(p)} — ไม่ตรงกับทีมใด`, 'bad') : null,
           usedBy ? tag('ใช้ในภาพประกาศ', 'ok') : null),
         sel, del);
     }));
@@ -196,7 +245,7 @@
       cands.length ? null : el('span', { cls: 'muted', text: 'ยังไม่มีรูปที่อ่านป้ายรหัสได้เป็นทีมนี้ ' }),
       (() => {
         const s = el('select', {}, el('option', { text: 'เลือกรูปอื่น…', attrs: { value: '' } }),
-          ...others.map(p => el('option', { text: `${resolveTeam(p.team) ? 'ทีม ' + resolveTeam(p.team).short : 'ไม่พบรหัส'} · ${p.name || p.sha.slice(0, 8)}`, attrs: { value: p.sha } })));
+          ...others.map(p => el('option', { text: `${photoTeam(p) ? 'ทีม ' + photoTeam(p).short : 'ไม่พบรหัส'} · ${p.name || p.sha.slice(0, 8)}`, attrs: { value: p.sha } })));
         s.addEventListener('change', () => { if (s.value) { editor.sha = s.value; renderEditorShell(); loadEditorPhoto(); } });
         return s;
       })()].filter(Boolean));
@@ -408,7 +457,11 @@
     $('edSave').addEventListener('click', saveEditor);
     $('edClose').addEventListener('click', closeEditor);
     hookSourceCanvas();
-    Store.on(() => { if (!editor) renderAll(); });
+    // Only while this tab is open; opening the tab renders it.
+    const visible = () => !$('tab-posters').classList.contains('hidden');
+    Store.on(() => { if (!editor && visible()) renderAll(); });
+    const tabBtn = document.querySelector('#tabs button[data-tab="posters"]');
+    if (tabBtn) tabBtn.addEventListener('click', () => { if (!editor) renderAll(); });
     Poster.loadMeta().catch(() => {});
   }
 

@@ -54,6 +54,7 @@
     document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
     document.querySelectorAll('.tab').forEach(s => s.classList.toggle('hidden', s.id !== 'tab-' + name));
     try { sessionStorage.setItem('artcontest.tab', name); } catch (e) { /* ignore */ }
+    renderAll();
   }
 
   async function saveConnection() {
@@ -108,10 +109,12 @@
   function renderAll() {
     const r = Store.roster;
     if (!r) return;
-    $('fresh').textContent = `ข้อมูลตาราง ณ ${timeOf(r.readAt)} · ${r.counts.teams} ทีม · แถวมีปัญหา ${r.problems.length}`;
-    renderRoster(r);
-    renderCheckin();
-    renderAwards();
+    $('fresh').textContent = `ข้อมูลตาราง ณ ${timeOf(r.readAt)} · ${r.counts.teams} ทีม · ${r.counts.students} คน · แถวมีปัญหา ${r.problems.length}`;
+    // Only the visible tab is rebuilt: with hundreds of teams, rebuilding hidden tabs on every check-in tap
+    // made the desk laptop stall. showTab() renders a tab when it is opened.
+    if (currentTab === 'roster') renderRoster(r);
+    if (currentTab === 'checkin') renderCheckin();
+    if (currentTab === 'awards') renderAwards();
   }
 
   // ------------------------------------------------------------ roster tab
@@ -147,6 +150,20 @@
     }));
   }
 
+  // Expected final turnout: people already here, plus the not-yet-recorded people
+  // scaled by the share of recorded people who came. Before any record, assume everyone comes.
+  function forecastStat(total, came, pending) {
+    const recorded = total - pending;
+    const rate = recorded ? came / recorded : 1;
+    const expect = Math.round(came + pending * rate);
+    const box = el('div', { cls: 'stat' }, el('b', { text: `≈ ${expect} คน` }), 'คาดว่าจะมาทั้งหมด');
+    box.appendChild(el('div', { cls: 'muted', text: pending
+      ? (recorded ? `อัตรามา ${Math.round(rate * 100)}% จาก ${recorded} คนที่บันทึกแล้ว · ช่วง ${came}–${came + pending} คน`
+                  : 'ยังไม่มีการบันทึก จึงคิดว่ามาครบทุกคน')
+      : 'บันทึกครบทุกทีมแล้ว (ตัวเลขจริง)' }));
+    return box;
+  }
+
   function memberLine(m) {
     const line = el('div', {}, m.printName);
     if (m.titleState === 'none') line.appendChild(tag('ไม่มีคำนำหน้า', 'warn'));
@@ -164,11 +181,24 @@
     const inLevel = all.filter(t => ciLevel === 'all' || t.levelKey === ciLevel);
     const shown = inLevel.filter(t => !q || App.fold(t.short).includes(App.fold(q)) || t.school.includes(q));
 
-    const counts = { present: 0, partial: 0, absent: 0, unknown: 0, students: 0 };
-    inLevel.forEach(t => { counts[Store.attend(t.code).state]++; counts.students += App.presentMembers(t).length; });
+    // Teams and people per attendance state; for 'partial' the people are the ones who came.
+    const teams = { present: 0, partial: 0, absent: 0, unknown: 0 };
+    const people = { present: 0, partial: 0, absent: 0, unknown: 0 };
+    let total = 0, came = 0;
+    inLevel.forEach(t => {
+      const st = Store.attend(t.code).state, here = App.presentMembers(t).length;
+      teams[st]++; total += t.members.length; came += here;
+      people[st] += st === 'partial' ? here : t.members.length;
+    });
     const stat = (label, value) => el('div', { cls: 'stat' }, el('b', { text: String(value) }), label);
-    $('ciStats').replaceChildren(stat('ทีมทั้งหมด', inLevel.length), stat('มาครบ', counts.present), stat('มาไม่ครบ', counts.partial),
-      stat('ไม่มา', counts.absent), stat('ยังไม่บันทึก', counts.unknown), stat('นักเรียนที่มา', counts.students));
+    const tp = (st) => `${teams[st]} ทีม / ${people[st]} คน`;
+    $('ciStats').replaceChildren(
+      stat('ผู้เข้าร่วมที่มาแล้ว', `${came} / ${total} คน`),
+      stat('ทั้งหมด', `${inLevel.length} ทีม / ${total} คน`),
+      stat('มาครบ', tp('present')), stat('มาไม่ครบ (นับคนที่มา)', tp('partial')),
+      stat('ไม่มา', tp('absent')), stat('ยังไม่บันทึก', tp('unknown')),
+      stat('คนที่ไม่มา', `${total - came - people.unknown} คน`),
+      forecastStat(total, came, people.unknown));
 
     $('ciList').replaceChildren(...shown.map(teamCheckinCard));
   }
@@ -381,7 +411,8 @@
   $('saveConn').addEventListener('click', saveConnection);
   $('runTest').addEventListener('click', runTest);
   $('refresh').addEventListener('click', refresh);
-  $('ciSearch').addEventListener('input', renderCheckin);
+  let searchTimer = 0;
+  $('ciSearch').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(renderCheckin, 150); });
   $('forget').addEventListener('click', () => { Api.forget(); showConnected(false); });
   $('resetTest').addEventListener('click', () => guarded(async () => {
     const typed = prompt('พิมพ์คำว่า  ล้างข้อมูลทดสอบ  เพื่อยืนยัน\n(ล้างเช็กอิน ผลรางวัล การล็อก รูปทั้งหมด การจัดภาพ และการยืนยัน)');
