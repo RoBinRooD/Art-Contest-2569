@@ -1,4 +1,4 @@
-@page { size: A4 portrait; margin: 10mm; }
+@page { size: A4 portrait; margin: 10mm 10mm 12mm; }
 * { box-sizing: border-box; }
 html, body { margin: 0; color: #000; background: #fff; }
 body { font-family: "Sarabun", "TH Sarabun New", "Leelawadee UI", "Noto Sans Thai", sans-serif; font-size: 12pt; line-height: 1.35; }
@@ -9,17 +9,19 @@ body { font-family: "Sarabun", "TH Sarabun New", "Leelawadee UI", "Noto Sans Tha
 @media print { .no-print { display: none !important; } #out { padding: 0; } }
 @media screen { .sheet { box-shadow: 0 0 0 1px #ddd; margin-bottom: 8mm; } }
 .page-footer { font-size: 8.5pt; color: #555; }
-@media print { .page-footer { position: fixed; bottom: 0; left: 0; right: 0; text-align: right; } }
+@media print { .page-footer { display: none; } }   /* printed in the @page margin instead (print.js) */
 @media screen { .page-footer { padding: 0 10mm 10mm; } }
 .code { font-family: "Consolas", "Courier New", monospace; font-weight: 700; letter-spacing: 1px; }
 .break { break-after: page; }
-#out > :last-child, .slip:last-child { break-after: auto !important; }
+#out > :last-child { break-after: auto !important; }
 .avoid { break-inside: avoid; }
 .draft { border: 2px solid #b00; color: #b00; padding: 3mm; margin-bottom: 4mm; font-weight: 700; }
 
-/* team slip: two per A4 page */
-.slip { height: 136mm; padding: 5mm 6mm 0; border: 0.3mm solid #999; margin-bottom: 4mm; display: flex; flex-direction: column; break-inside: avoid; }
-.slip:nth-child(2n) { break-after: page; }
+/* team slip: two per A4 sheet (packSlips groups them); a slip that does not fit gets a whole sheet */
+.slip-sheet { break-after: page; }
+.slip { height: 134mm; padding: 5mm 6mm 0; border: 0.3mm solid #999; margin-bottom: 4mm; display: flex; flex-direction: column; break-inside: avoid; }
+.slip-sheet .slip:last-child { margin-bottom: 0; }
+.slip.tall { height: auto; min-height: 134mm; }
 .slip-head { display: flex; align-items: flex-start; gap: 6mm; }
 .slip-head .code { font-size: 34pt; line-height: 1; }
 .slip-head .meta { flex: 1; }
@@ -65,11 +67,17 @@ table.form th, table.form td { border: 0.3mm solid #444; padding: 2mm 3mm; text-
 table.form th { background: #eee; font-size: 10.5pt; }
 .codebox { display: inline-flex; gap: 1.5mm; }
 .codebox span { width: 11mm; height: 13mm; border: 0.4mm solid #000; display: inline-block; }
+.codes-title { margin-top: 8mm; }
+.codes.dense { gap: 1mm 3.5mm; font-size: 11pt; }
 .codes { display: flex; flex-wrap: wrap; gap: 2mm 5mm; font-size: 14pt; margin: 2mm 0 6mm; }
 .codes .absent { text-decoration: line-through; color: #888; }
-.signs { display: grid; grid-template-columns: 1fr 1fr; gap: 10mm 12mm; margin-top: 10mm; font-size: 11pt; }
+.signs { display: grid; grid-template-columns: 1fr 1fr; gap: 10mm 12mm; margin-top: 12mm; font-size: 11pt; }
 .signs div { border-top: 0.3mm dotted #000; padding-top: 1mm; text-align: center; }
 .master td { font-size: 11pt; }
+.master td:nth-child(1) { width: 14mm; }
+.master td:nth-child(2) { width: 52mm; }
+.master td:nth-child(4), .master td:nth-child(5) { width: 12mm; text-align: center; }
+.master td:nth-child(6) { width: 32mm; }
 .mc-award { font-size: 14pt; font-weight: 700; margin-top: 5mm; }
 .mc-entry { margin: 1mm 0 3mm 6mm; font-size: 14pt; }
 .mc-entry .school { font-weight: 700; }

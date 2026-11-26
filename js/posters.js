@@ -47,11 +47,28 @@
     return h.toString(16);
   }
 
+  // At most a few thumbnail requests at a time: hundreds of simultaneous calls make Apps Script refuse them.
+  const THUMB_PARALLEL = 4;
+  let thumbActive = 0;
+  const thumbQueue = [];
+  function thumbSlot() {
+    if (thumbActive < THUMB_PARALLEL) { thumbActive++; return Promise.resolve(); }
+    return new Promise(res => thumbQueue.push(res));
+  }
+  function thumbDone() { const next = thumbQueue.shift(); if (next) next(); else thumbActive--; }
+
   async function thumbUrl(p) {
-    if (!thumbCache.has(p.sha)) thumbCache.set(p.sha, (async () => {
-      const r = await Api.call('getPhoto', { fileId: p.thumbId || p.fileId });
-      return URL.createObjectURL(Photo.base64ToBlob(r.data));
-    })());
+    if (!thumbCache.has(p.sha)) {
+      const job = (async () => {
+        await thumbSlot();
+        try {
+          const r = await Api.call('getPhoto', { fileId: p.thumbId || p.fileId });
+          return URL.createObjectURL(Photo.base64ToBlob(r.data));
+        } finally { thumbDone(); }
+      })();
+      thumbCache.set(p.sha, job);
+      job.catch(() => thumbCache.delete(p.sha));   // a failed thumbnail is tried again next time it is shown
+    }
     return thumbCache.get(p.sha);
   }
 
@@ -66,9 +83,17 @@
     return fullCache.get(sha);
   }
 
+  // Thumbnails load only when they scroll into view.
+  const thumbSeen = 'IntersectionObserver' in window ? new IntersectionObserver(entries => entries.forEach(e => {
+    if (!e.isIntersecting) return;
+    thumbSeen.unobserve(e.target);
+    e.target._load();
+  }), { rootMargin: '300px' }) : null;
+
   function lazyThumb(p, cls = 'thumb') {
     const img = el('img', { cls, attrs: { alt: '' } });
-    thumbUrl(p).then(u => { img.src = u; }).catch(() => { img.alt = 'โหลดไม่ได้'; });
+    img._load = () => thumbUrl(p).then(u => { img.src = u; }).catch(() => { img.alt = 'โหลดไม่ได้'; });
+    if (thumbSeen) thumbSeen.observe(img); else img._load();
     return img;
   }
 
@@ -127,9 +152,22 @@
     const teams = Store.activeTeams();
     $('library').replaceChildren(...all.map(p => {
       const t = resolveTeam(p.team);
+      // The full team list is added only when the menu is opened: hundreds of photos x hundreds of teams
+      // as ready-made options froze the page.
+      const label = x => `${x.short} · ${LEVEL_SHORT[x.levelKey]}`;
       const sel = el('select', {}, el('option', { text: t ? '' : '— ระบุทีม —', attrs: { value: '' } }),
-        ...teams.map(x => el('option', { text: `${x.short} · ${LEVEL_SHORT[x.levelKey]}`, attrs: { value: x.code } })));
+        t ? el('option', { text: label(t), attrs: { value: t.code } }) : null);
       sel.value = t ? t.code : '';
+      const fill = () => {
+        if (sel.dataset.full) return;
+        sel.dataset.full = '1';
+        sel.replaceChildren(el('option', { text: t ? '' : '— ระบุทีม —', attrs: { value: '' } }),
+          ...teams.map(x => el('option', { text: label(x), attrs: { value: x.code } })));
+        sel.value = t ? t.code : '';
+      };
+      sel.addEventListener('mousedown', fill);
+      sel.addEventListener('focus', fill);
+      sel.addEventListener('keydown', fill);
       sel.addEventListener('change', () => guarded(() => Store.set(p.key, { team: sel.value }, p.v)));
       const usedBy = t && chosen(t.code) && chosen(t.code).sha === p.sha;
       const del = el('button', { cls: 'link', text: 'ลบรูปนี้', on: { click: () => guarded(async () => {
@@ -408,7 +446,11 @@
     $('edSave').addEventListener('click', saveEditor);
     $('edClose').addEventListener('click', closeEditor);
     hookSourceCanvas();
-    Store.on(() => { if (!editor) renderAll(); });
+    // Only while this tab is open; opening the tab renders it.
+    const visible = () => !$('tab-posters').classList.contains('hidden');
+    Store.on(() => { if (!editor && visible()) renderAll(); });
+    const tabBtn = document.querySelector('#tabs button[data-tab="posters"]');
+    if (tabBtn) tabBtn.addEventListener('click', () => { if (!editor) renderAll(); });
     Poster.loadMeta().catch(() => {});
   }
 

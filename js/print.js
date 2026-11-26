@@ -75,6 +75,24 @@
     });
   }
 
+  // Two slips per A4 sheet. A slip whose names do not fit its half page (big team, long names) gets a sheet of
+  // its own at full height instead of being cut off or pushing every later slip out of step.
+  function packSlips() {
+    const all = [...$('out').querySelectorAll('.slip')];
+    const tall = all.filter(s => s.scrollHeight > s.clientHeight + 1);
+    tall.forEach(s => s.classList.add('tall'));
+    const sheets = [];
+    let open = null;
+    all.forEach(s => {
+      if (s.classList.contains('tall')) { sheets.push(el('div', { cls: 'slip-sheet' }, s)); return; }
+      if (open && open.children.length < 2) { open.appendChild(s); return; }
+      open = el('div', { cls: 'slip-sheet' }, s);
+      sheets.push(open);
+    });
+    $('out').replaceChildren(...sheets);
+    $('status').textContent = tall.length ? `พร้อมพิมพ์ · ${tall.length} ทีมชื่อยาวหรือคนเยอะ ใช้ใบเต็มหน้า` : $('status').textContent;
+  }
+
   function stickers() {
     const labels = [];
     LEVEL_ORDER.forEach(level => {
@@ -118,11 +136,12 @@
         el('table', { cls: 'form' },
           el('thead', {}, el('tr', {}, el('th', { text: 'รางวัล' }), el('th', { text: 'รหัสทีม (3 ตัว ดูจากสติกเกอร์หลังภาพ)' }), el('th', { text: 'หมายเหตุ' }))),
           el('tbody', {}, rows.map(r => el('tr', {}, el('td', { text: r[0] }), el('td', {}, box()), el('td'))))),
-        el('div', { text: 'รหัสทีมทั้งหมดในระดับนี้ (ใช้ตรวจว่าเขียนรหัสถูก — ขีดฆ่า = ทีมที่ไม่มาแข่ง):' }),
-        el('div', { cls: 'codes' }, teams.map(t => el('span', { cls: 'code' + (Store.attend(t.code).state === 'absent' ? ' absent' : ''), text: t.short }))),
         el('div', { text: 'รางวัลที่ไม่มีผู้ได้รับ ให้เขียน "ไม่มี" ในช่องรหัส · ชมเชยที่ไม่ใช้ให้ขีดฆ่าทั้งแถว' }),
+        // signatures stay on the same sheet as the results they sign, however long the code list below gets
         el('div', { cls: 'signs' },
-          el('div', { text: 'ประธานกรรมการ' }), el('div', { text: 'กรรมการ' }), el('div', { text: 'กรรมการ' }), el('div', { text: 'วันที่ / เวลา' })));
+          el('div', { text: 'ประธานกรรมการ' }), el('div', { text: 'กรรมการ' }), el('div', { text: 'กรรมการ' }), el('div', { text: 'วันที่ / เวลา' })),
+        el('div', { cls: 'codes-title', text: `รหัสทีมทั้งหมดในระดับนี้ ${teams.length} ทีม (ใช้ตรวจว่าเขียนรหัสถูก — ขีดฆ่า = ทีมที่ไม่มาแข่ง):` }),
+        el('div', { cls: 'codes' + (teams.length > 60 ? ' dense' : '') }, teams.map(t => el('span', { cls: 'code' + (Store.attend(t.code).state === 'absent' ? ' absent' : ''), text: t.short }))));
     });
   }
 
@@ -185,8 +204,12 @@
     const fn = SECTIONS[name] || slips;
     $('section').value = SECTIONS[name] ? name : 'slips';
     $('out').replaceChildren(...fn());
+    if (fn === slips) packSlips();
     const r = Store.roster;
-    $('footer').textContent = `${DEMO ? 'ข้อมูลตัวอย่าง (ไม่ใช่ข้อมูลจริง) · ' : ''}ข้อมูลตาราง ณ ${App.dateTimeOf(r.readAt)} · ${r.counts.teams} ทีม · ${r.counts.students} คน · ระบบเกียรติบัตร 2569`;
+    const foot = `${DEMO ? 'ข้อมูลตัวอย่าง (ไม่ใช่ข้อมูลจริง) · ' : ''}ข้อมูลตาราง ณ ${App.dateTimeOf(r.readAt)} · ${r.counts.teams} ทีม · ${r.counts.students} คน · ระบบเกียรติบัตร 2569`;
+    $('footer').textContent = foot;
+    // On paper the footer goes in the page margin, so it never covers the last lines of a long list.
+    $('pageFooterStyle').textContent = `@page { @bottom-right { content: "${foot.replace(/["\\]/g, '')}"; font-size: 8pt; color: #555; } }`;
     document.title = $('section').selectedOptions[0].textContent + ' — พิมพ์';
   }
 

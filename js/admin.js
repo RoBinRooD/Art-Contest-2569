@@ -54,6 +54,7 @@
     document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
     document.querySelectorAll('.tab').forEach(s => s.classList.toggle('hidden', s.id !== 'tab-' + name));
     try { sessionStorage.setItem('artcontest.tab', name); } catch (e) { /* ignore */ }
+    renderAll();
   }
 
   async function saveConnection() {
@@ -109,9 +110,11 @@
     const r = Store.roster;
     if (!r) return;
     $('fresh').textContent = `ข้อมูลตาราง ณ ${timeOf(r.readAt)} · ${r.counts.teams} ทีม · ${r.counts.students} คน · แถวมีปัญหา ${r.problems.length}`;
-    renderRoster(r);
-    renderCheckin();
-    renderAwards();
+    // Only the visible tab is rebuilt: with hundreds of teams, rebuilding hidden tabs on every check-in tap
+    // made the desk laptop stall. showTab() renders a tab when it is opened.
+    if (currentTab === 'roster') renderRoster(r);
+    if (currentTab === 'checkin') renderCheckin();
+    if (currentTab === 'awards') renderAwards();
   }
 
   // ------------------------------------------------------------ roster tab
@@ -408,7 +411,8 @@
   $('saveConn').addEventListener('click', saveConnection);
   $('runTest').addEventListener('click', runTest);
   $('refresh').addEventListener('click', refresh);
-  $('ciSearch').addEventListener('input', renderCheckin);
+  let searchTimer = 0;
+  $('ciSearch').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(renderCheckin, 150); });
   $('forget').addEventListener('click', () => { Api.forget(); showConnected(false); });
   $('resetTest').addEventListener('click', () => guarded(async () => {
     const typed = prompt('พิมพ์คำว่า  ล้างข้อมูลทดสอบ  เพื่อยืนยัน\n(ล้างเช็กอิน ผลรางวัล การล็อก รูปทั้งหมด การจัดภาพ และการยืนยัน)');

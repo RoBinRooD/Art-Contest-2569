@@ -46,9 +46,18 @@
         .map(k => ({ key: k, v: this.state[k].v, ...this.state[k].value }))
         .sort((a, b) => a.award - b.award || a.order - b.order);
     },
+    // team code -> award; rebuilt after every change (emit), so lookups stay fast with thousands of state rows
     awardOf(code) {
-      const k = Object.keys(this.state).find(k => k.startsWith('award:') && this.state[k].value && this.state[k].value.team === code);
-      return k ? this.state[k].value : null;
+      if (!this._awardIndex || this._awardIndexOf !== this.state) this.indexAwards();
+      return this._awardIndex.get(code) || null;
+    },
+    indexAwards() {
+      const m = new Map();
+      Object.keys(this.state).forEach(k => {
+        const v = k.startsWith('award:') && this.state[k].value;
+        if (v && v.team && !m.has(v.team)) m.set(v.team, v);
+      });
+      this._awardIndex = m; this._awardIndexOf = this.state;
     },
     async set(stateKey, value, expectV) {
       const r = await Api.call('set', { stateKey, value, expectV, actor: actor() }, { retries: 1 });
@@ -57,7 +66,7 @@
       return r;
     },
     on(fn) { this.listeners.push(fn); },
-    emit() { this.applyNames(); this.listeners.forEach(f => f()); },
+    emit() { this.indexAwards(); this.applyNames(); this.listeners.forEach(f => f()); },
     // Name corrections / substitutions recorded on the day replace the sheet name everywhere (slips, posters, certificates).
     applyNames() {
       if (!this.roster) return;

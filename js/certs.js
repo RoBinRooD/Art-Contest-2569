@@ -78,34 +78,89 @@
   async function preview() {
     if (!template) { $('certPreviewMsg').textContent = 'เลือกไฟล์เทมเพลตก่อน'; return; }
     const grid = $('certGrid');
+    grid.querySelectorAll('img').forEach(i => URL.revokeObjectURL(i.src));
     grid.replaceChildren();
     const items = plan().flatMap(x => x.members.filter(m => m.status === 'cert').map(m => ({ ...m, team: x.team })));
     $('certPreviewMsg').textContent = `กำลังสร้าง ${items.length} ใบ…`;
+    // Each thumbnail becomes a small JPEG and its canvas is freed: a thousand live canvases would exhaust the
+    // browser's memory on a big contest.
+    let done = 0;
     for (const it of items) {
       const r = await render(it.name, 0.22);
-      r.canvas.className = 'cert-thumb';
-      grid.appendChild(el('div', { cls: 'cert-cell' }, r.canvas,
+      const img = el('img', { cls: 'cert-thumb', attrs: { alt: it.name, loading: 'lazy' } });
+      img.src = URL.createObjectURL(await Photo.toBlob(r.canvas, 0.8));
+      r.canvas.width = r.canvas.height = 0;
+      grid.appendChild(el('div', { cls: 'cert-cell' }, img,
         el('div', { cls: 'muted', text: `${it.team.short} · ${it.team.school}` }), r.small ? tag('ชื่อยาว ตัวอักษรถูกย่อ', 'warn') : null));
+      if (++done % 20 === 0) $('certPreviewMsg').textContent = `กำลังสร้าง ${done}/${items.length} ใบ…`;
     }
     $('certPreviewMsg').textContent = `${items.length} ใบ · ตรวจชื่อทุกใบก่อนเผยแพร่`;
   }
 
+  const PUBLISH_WORKERS = 3;                       // parallel uploads; Apps Script handles a few at once
+  const TRANSIENT = ['busy', 'timeout', 'network', 'server_error', 'not_json'];
+
+  async function publishOne(it, hash) {
+    const r = await render(it.name, 1);
+    const data = await Photo.blobToBase64(await Photo.toBlob(r.canvas, 0.88));
+    r.canvas.width = r.canvas.height = 0;
+    for (let attempt = 1; ; attempt++) {
+      try {
+        return await Api.call('publishCert', { sid: it.sid, code: it.team.code, data, hash, actor: App.actor() }, { timeoutMs: 120000 });
+      } catch (err) {
+        if (attempt >= 3 || !TRANSIENT.includes(err.code)) throw err;
+        await new Promise(res => setTimeout(res, 3000 * attempt));
+      }
+    }
+  }
+
   async function publish() {
     const msg = $('certPublishMsg');
-    const p = plan();
-    const items = p.flatMap(x => x.members.filter(m => m.status === 'cert').map(m => ({ ...m, team: x.team })));
-    let sent = 0, same = 0;
-    for (const it of items) {
-      msg.textContent = `กำลังอัปโหลด ${sent + same + 1}/${items.length}…`;
-      const hash = fnv(`${it.name}|${Poster.font}|${templateSig}`);
-      const cur = Store.val('cert:' + it.sid);
-      if (cur && cur.hash === hash) { same++; continue; }
-      const r = await render(it.name, 1);
-      const data = await Photo.blobToBase64(await Photo.toBlob(r.canvas, 0.88));
-      r.canvas.width = r.canvas.height = 0;
-      const res = await Api.call('publishCert', { sid: it.sid, code: it.team.code, data, hash, actor: App.actor() }, { timeoutMs: 120000 });
-      if (res.unchanged) same++; else sent++;
+    const btn = $('certPublish');
+    btn.disabled = true;
+    try {
+      // Fresh state first, so a second press after an interruption skips everything already uploaded.
+      msg.textContent = 'กำลังตรวจว่าอัปโหลดอะไรไปแล้วบ้าง…';
+      await Store.loadState();
+      const p = plan();
+      const items = p.flatMap(x => x.members.filter(m => m.status === 'cert').map(m => ({ ...m, team: x.team })));
+      const todo = [];
+      let sent = 0, same = 0;
+      items.forEach(it => {
+        const hash = fnv(`${it.name}|${Poster.font}|${templateSig}`);
+        const cur = Store.val('cert:' + it.sid);
+        if (cur && cur.hash === hash) same++; else todo.push({ it, hash });
+      });
+      const failed = [];
+      const started = Date.now();
+      let next = 0;
+      const show = () => {
+        const finished = sent + failed.length, left = todo.length - finished;
+        const eta = finished ? Math.ceil((Date.now() - started) / finished * left / 60000) : null;
+        msg.textContent = `กำลังอัปโหลด ${finished}/${todo.length} ใบ (ไม่เปลี่ยน ${same} ใบ)${eta ? ` · เหลืออีกราว ${eta} นาที` : ''} — อย่าปิดหน้านี้`;
+      };
+      show();
+      await Promise.all(Array.from({ length: PUBLISH_WORKERS }, async () => {
+        while (next < todo.length) {
+          const { it, hash } = todo[next++];
+          try { const res = await publishOne(it, hash); if (res.unchanged) same++; else sent++; }
+          catch (err) { failed.push(`${it.team.short} ${it.name} (${Api.message(err)})`); }
+          show();
+        }
+      }));
+      if (failed.length) {
+        await Store.loadState();
+        msg.textContent = `อัปโหลดสำเร็จ ${sent} ใบ · ไม่สำเร็จ ${failed.length} ใบ: ${failed.slice(0, 5).join(' · ')}${failed.length > 5 ? ' …' : ''} — กด "เผยแพร่" อีกครั้ง ระบบจะทำต่อเฉพาะใบที่ยังไม่สำเร็จ`;
+        return;
+      }
+      await finishPublish(p, sent, same);
+    } finally {
+      btn.disabled = !Store.locked() || !template;
     }
+  }
+
+  async function finishPublish(p, sent, same) {
+    const msg = $('certPublishMsg');
     msg.textContent = 'กำลังบันทึกรายชื่อของแต่ละทีม…';
     await Api.call('publishTeams', {
       teams: p.map(x => ({ code: x.team.code, members: x.members.map(m => ({ sid: m.sid, name: m.name, status: m.status, award: m.award })) })),
@@ -145,6 +200,9 @@
   $('certPublish').addEventListener('click', () => guarded(publish, 'certPublishMsg'));
   $('certOpen').addEventListener('click', () => guarded(toggleOpen, 'certPublishMsg'));
   $('certLinks').addEventListener('click', () => guarded(showLinks));
-  Store.on(renderSummary);
+  // Only while this tab is open; opening the tab renders it.
+  Store.on(() => { if (!$('tab-certs').classList.contains('hidden')) renderSummary(); });
+  const tabBtn = document.querySelector('#tabs button[data-tab="certs"]');
+  if (tabBtn) tabBtn.addEventListener('click', renderSummary);
   window.CertsTab = { plan, render, _setTemplate: (img, sig) => { template = img; templateSig = sig; renderSummary(); } };
 })();

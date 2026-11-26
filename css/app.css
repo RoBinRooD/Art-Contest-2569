@@ -78,7 +78,7 @@ button.small { padding: 6px 10px; font-size: 14px; }
 .tabs button, .seg button { background: transparent; color: var(--accent); padding: 6px 12px; }
 .tabs button.active, .seg button.active { background: var(--accent); color: #fff; }
 .code.big { font-size: 26px; min-width: 70px; }
-.ci-card { border: 1px solid var(--border); border-left: 5px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+.ci-card { border: 1px solid var(--border); border-left: 5px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; content-visibility: auto; contain-intrinsic-size: auto 130px; }
 .ci-card.present { border-left-color: var(--ok); }
 .ci-card.partial { border-left-color: var(--warn); }
 .ci-card.absent { border-left-color: var(--bad); opacity: .8; }
