@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
   <title>แอดมิน — ระบบเกียรติบัตร 2569</title>
-  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/app.css?v=20261126c">
 </head>
 <body>
   <header class="top">
@@ -57,14 +57,24 @@
           ใส่รูปทดสอบให้ทีมที่ได้รางวัล แล้วล็อกผล จากนั้นลองภาพประกาศและเกียรติบัตรต่อได้เลย เสร็จแล้วกด "ล้างข้อมูลทดสอบ" ด้านล่าง
           · ปุ่มนี้ใช้ได้ก่อนวันงานเท่านั้น</p>
         <button class="secondary" id="seedTest">เตรียมข้อมูลทดสอบอัตโนมัติ…</button>
-        <span class="muted" id="seedMsg"></span>
+        <div class="row hidden" id="seedConfirm" style="margin-top:10px">
+          <input type="text" id="seedWord" placeholder="พิมพ์คำว่า  ข้อมูลทดสอบ  แล้วกดเริ่ม" autocomplete="off">
+          <button id="seedGo">เริ่ม</button>
+          <button class="link" id="seedCancel">ยกเลิก</button>
+        </div>
+        <div class="muted" id="seedMsg" style="margin-top:8px"></div>
       </div>
       <div class="card">
         <h2>ล้างข้อมูลทดสอบ</h2>
         <p class="muted">ล้างการเช็กอิน ผลรางวัล การล็อกผล รูปทั้งหมด การจัดภาพ และการยืนยัน ใช้หลังซ้อมหรือหลังลองระบบ
           รายชื่อจากตารางรับสมัครและ QR บนใบทีมที่พิมพ์แล้วไม่เปลี่ยน รูปไปอยู่ในถังขยะ Drive (กู้คืนได้ 30 วัน) ห้ามกดในวันงานจริงหลังเริ่มเช็กอิน</p>
         <button class="secondary" id="resetTest">ล้างข้อมูลทดสอบ…</button>
-        <span class="muted" id="resetMsg"></span>
+        <div class="row hidden" id="resetConfirm" style="margin-top:10px">
+          <input type="text" id="resetWord" placeholder="พิมพ์คำว่า  ล้างข้อมูลทดสอบ  แล้วกดล้าง" autocomplete="off">
+          <button id="resetGo">ล้าง</button>
+          <button class="link" id="resetCancel">ยกเลิก</button>
+        </div>
+        <div class="muted" id="resetMsg" style="margin-top:8px"></div>
       </div>
       <div class="card">
         <h2>รายชื่อจากตารางรับสมัคร (อ่านสด)</h2>
@@ -218,15 +228,15 @@
       </div>
     </section>
   </main>
-  <script src="config.js"></script>
-  <script src="js/api.js"></script>
-  <script src="js/common.js"></script>
-  <script src="js/admin.js"></script>
-  <script src="js/vendor/qrcode.js"></script>
-  <script src="js/vendor/jsQR.js"></script>
-  <script src="js/photo.js"></script>
-  <script src="js/poster.js"></script>
-  <script src="js/posters.js"></script>
-  <script src="js/certs.js"></script>
+  <script src="config.js?v=20261126c"></script>
+  <script src="js/api.js?v=20261126c"></script>
+  <script src="js/common.js?v=20261126c"></script>
+  <script src="js/admin.js?v=20261126c"></script>
+  <script src="js/vendor/qrcode.js?v=20261126c"></script>
+  <script src="js/vendor/jsQR.js?v=20261126c"></script>
+  <script src="js/photo.js?v=20261126c"></script>
+  <script src="js/poster.js?v=20261126c"></script>
+  <script src="js/posters.js?v=20261126c"></script>
+  <script src="js/certs.js?v=20261126c"></script>
 </body>
 </html>

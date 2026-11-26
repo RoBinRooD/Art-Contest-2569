@@ -435,9 +435,8 @@
   async function seedTestData() {
     const msg = $('seedMsg');
     if (!beforeEvent()) { msg.textContent = 'ใช้ได้ก่อนวันงานเท่านั้น'; return; }
-    const typed = prompt('ระบบจะเช็กอินทุกทีม ใส่ผลรางวัลทดสอบ ใส่รูปทดสอบ และล็อกผล\nพิมพ์คำว่า  ข้อมูลทดสอบ  เพื่อยืนยัน');
-    if (typed === null) return;
-    if (typed.trim() !== 'ข้อมูลทดสอบ') { msg.textContent = 'พิมพ์ไม่ตรง ยังไม่ได้ทำ'; return; }
+    if ($('seedWord').value.trim() !== 'ข้อมูลทดสอบ') { msg.textContent = 'พิมพ์คำว่า ข้อมูลทดสอบ ให้ตรงก่อน'; return; }
+    $('seedConfirm').classList.add('hidden'); $('seedWord').value = '';
     msg.textContent = 'กำลังอ่านข้อมูลล่าสุด…';
     await Store.loadAll();
     if (Store.locked()) { msg.textContent = 'ล็อกผลอยู่แล้ว — ไปลองภาพประกาศ/เกียรติบัตรได้เลย หรือกด "ล้างข้อมูลทดสอบ" ก่อนแล้วค่อยกดใหม่'; return; }
@@ -482,18 +481,27 @@
     await Store.set('lock', { locked: true }, lock ? lock.v : 0);
     msg.textContent = 'พร้อมแล้ว ✓ ต่อไป: แท็บภาพประกาศ → ยืนยัน → เผยแพร่ภาพ · แท็บเกียรติบัตร → เลือกเทมเพลต → เผยแพร่ → เปิดให้ดาวน์โหลด · ลองด้วยมือถือ · เสร็จแล้วกด "ล้างข้อมูลทดสอบ"';
   }
-  $('seedTest').addEventListener('click', () => guarded(seedTestData));
+  // Confirmation is typed into the page (browser prompt boxes can be blocked).
+  const confirmRow = (openBtn, row, word, go, cancel, msg, fn) => {
+    $(openBtn).addEventListener('click', () => { $(row).classList.remove('hidden'); $(msg).textContent = ''; $(word).focus(); });
+    $(cancel).addEventListener('click', () => { $(row).classList.add('hidden'); $(word).value = ''; });
+    $(go).addEventListener('click', () => guarded(fn));
+    $(word).addEventListener('keydown', e => { if (e.key === 'Enter') guarded(fn); });
+  };
+  confirmRow('seedTest', 'seedConfirm', 'seedWord', 'seedGo', 'seedCancel', 'seedMsg', async () => {
+    $('seedGo').disabled = true;
+    try { await seedTestData(); } finally { $('seedGo').disabled = false; }
+  });
 
-  $('resetTest').addEventListener('click', () => guarded(async () => {
-    const typed = prompt('พิมพ์คำว่า  ล้างข้อมูลทดสอบ  เพื่อยืนยัน\n(ล้างเช็กอิน ผลรางวัล การล็อก รูปทั้งหมด การจัดภาพ และการยืนยัน)');
-    if (typed === null) return;
-    if (typed.trim() !== 'ล้างข้อมูลทดสอบ') { $('resetMsg').textContent = 'พิมพ์ไม่ตรง ยังไม่ได้ล้าง'; return; }
+  confirmRow('resetTest', 'resetConfirm', 'resetWord', 'resetGo', 'resetCancel', 'resetMsg', async () => {
+    if ($('resetWord').value.trim() !== 'ล้างข้อมูลทดสอบ') { $('resetMsg').textContent = 'พิมพ์คำว่า ล้างข้อมูลทดสอบ ให้ตรงก่อน'; return; }
+    $('resetConfirm').classList.add('hidden'); $('resetWord').value = '';
     $('resetMsg').textContent = 'กำลังล้าง…';
     const r = await Api.call('resetTestData', { confirm: 'ล้างข้อมูลทดสอบ', actor: App.actor() }, { retries: 0, timeoutMs: 120000 });
     const c = r.cleared || {};
     $('resetMsg').textContent = `ล้างแล้ว: เช็กอิน ${c['attend:'] || 0} ทีม · ช่องรางวัล ${c['award:'] || 0} · รูป ${c['photofile:'] || 0} · จัดภาพ ${c['photo:'] || 0}${c.lock ? ' · ปลดล็อกผล' : ''}`;
     await Store.loadState();
-  }));
+  });
   document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
   Store.on(renderAll);
   let saved = 'roster';
