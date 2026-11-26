@@ -12,6 +12,9 @@
     .item img { width: 72px; height: 72px; object-fit: cover; border-radius: 6px; background: var(--info-bg); }
     .item .info { flex: 1; font-size: 15px; }
     .summary { font-size: 18px; font-weight: 600; }
+    .item.ask { background: var(--info-bg); border-radius: 8px; padding: 8px; }
+    .ask-box { margin-top: 6px; }
+    .ask-box input { font-size: 20px; width: 7em; text-transform: uppercase; letter-spacing: 2px; padding: 8px; }
   </style>
 </head>
 <body>
@@ -22,7 +25,7 @@
     </div>
     <div id="inApp" class="banner warn hidden">กำลังเปิดในแอป (LINE/Facebook) ให้แตะ ⋮ หรือ ⋯ แล้วเลือก "เปิดในเบราว์เซอร์" ก่อนส่งรูป</div>
     <section class="card" id="main">
-      <p>ถ่ายรูปด้วยแอปกล้องตามปกติให้ครบก่อน แล้วกดปุ่มด้านล่าง เลือกรูปผลงานทั้งหมดพร้อมกันได้เลย ระบบจะอ่านป้ายรหัสทีมในรูปให้เอง</p>
+      <p>ถ่ายรูปด้วยแอปกล้องตามปกติให้ครบก่อน แล้วกดปุ่มด้านล่าง เลือกรูปผลงานทั้งหมดพร้อมกันได้เลย ระบบจะอ่านป้ายรหัสทีมในรูปให้เอง รูปไหนอ่านไม่ได้ ระบบจะให้กรอกรหัสจากป้ายเอง</p>
       <label class="btn pick" for="files">เลือกรูปจากคลังภาพ</label>
       <input id="files" type="file" accept="image/jpeg,image/png" multiple class="hidden">
       <p class="muted">อย่าปิดหน้านี้จนกว่าทุกรูปจะขึ้น "ส่งแล้ว" · ห้ามลบรูปในเครื่องจนกว่าจะประกาศผลเสร็จ</p>

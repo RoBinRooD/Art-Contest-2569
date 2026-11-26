@@ -14,12 +14,21 @@
   // ---------------------------------------------------------------- data helpers
   const photofiles = () => Object.keys(Store.state).filter(k => k.startsWith('photofile:') && Store.state[k].value)
     .map(k => ({ key: k, sha: k.slice(10), v: Store.state[k].v, at: Store.state[k].at, ...Store.state[k].value }));
+  // A photo's team: the full code read from the card QR, or a code the photographer typed on the phone
+  // (usually the 3 characters on the card, matched leniently for O/0, I/1 ...). A typed code that fits
+  // no team, or more than one, stays unassigned for the admin to pick.
   function resolveTeam(guess) {
     if (!guess || !Store.roster) return null;
     const g = guess.toUpperCase();
-    return Store.roster.teams.find(t => t.code.toUpperCase() === g) || null;
+    const exact = Store.roster.teams.find(t => t.code.toUpperCase() === g);
+    if (exact) return exact;
+    const f = App.fold(g);
+    const hits = Store.roster.teams.filter(t => App.fold(t.short) === f || App.fold(t.code) === f);
+    return hits.length === 1 ? hits[0] : null;
   }
-  const photosOfTeam = code => photofiles().filter(p => { const t = resolveTeam(p.team); return t && t.code === code; });
+  const typedCode = p => { const m = /^\[ทีม ([A-Z0-9-]+)\]/.exec(p.name || ''); return m ? m[1] : ''; };
+  const photoTeam = p => resolveTeam(p.team) || (!p.team && p.teamSource !== 'manual' ? resolveTeam(typedCode(p)) : null);
+  const photosOfTeam = code => photofiles().filter(p => { const t = photoTeam(p); return t && t.code === code; });
   const chosen = code => Store.val('photo:' + code);
   const posterNamesOn = () => !!Store.val('setting:posterNames');
   const hideNames = code => !!Store.val('hidenames:' + code);
@@ -147,11 +156,11 @@
   // ---------------------------------------------------------------- photo library
   function renderLibrary() {
     const all = photofiles().sort((a, b) => (a.at < b.at ? 1 : -1));
-    const unknown = all.filter(p => !resolveTeam(p.team));
+    const unknown = all.filter(p => !photoTeam(p));
     $('libCount').textContent = `${all.length} รูป · ระบุทีมไม่ได้ ${unknown.length} รูป`;
     const teams = Store.activeTeams();
     $('library').replaceChildren(...all.map(p => {
-      const t = resolveTeam(p.team);
+      const t = photoTeam(p);
       // The full team list is added only when the menu is opened: hundreds of photos x hundreds of teams
       // as ready-made options froze the page.
       const label = x => `${x.short} · ${LEVEL_SHORT[x.levelKey]}`;
@@ -179,6 +188,8 @@
         el('div', { cls: 'lib-meta' },
           t ? el('b', { cls: 'code', text: t.short }) : tag('ไม่พบป้ายรหัส', 'warn'),
           p.teamSource === 'manual' ? tag('ระบุด้วยมือ', 'muted') : null,
+          p.teamSource !== 'manual' && t && !/^[A-Z0-9]{2,12}-[A-Z0-9]{2,8}$/.test(String(p.team || '').toUpperCase()) ? tag('ช่างภาพกรอกรหัส', 'muted') : null,
+          !t && typedCode(p) ? tag(`ช่างภาพกรอก ${typedCode(p)} — ไม่ตรงกับทีมใด`, 'bad') : null,
           usedBy ? tag('ใช้ในภาพประกาศ', 'ok') : null),
         sel, del);
     }));
@@ -234,7 +245,7 @@
       cands.length ? null : el('span', { cls: 'muted', text: 'ยังไม่มีรูปที่อ่านป้ายรหัสได้เป็นทีมนี้ ' }),
       (() => {
         const s = el('select', {}, el('option', { text: 'เลือกรูปอื่น…', attrs: { value: '' } }),
-          ...others.map(p => el('option', { text: `${resolveTeam(p.team) ? 'ทีม ' + resolveTeam(p.team).short : 'ไม่พบรหัส'} · ${p.name || p.sha.slice(0, 8)}`, attrs: { value: p.sha } })));
+          ...others.map(p => el('option', { text: `${photoTeam(p) ? 'ทีม ' + photoTeam(p).short : 'ไม่พบรหัส'} · ${p.name || p.sha.slice(0, 8)}`, attrs: { value: p.sha } })));
         s.addEventListener('change', () => { if (s.value) { editor.sha = s.value; renderEditorShell(); loadEditorPhoto(); } });
         return s;
       })()].filter(Boolean));
