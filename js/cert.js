@@ -51,7 +51,11 @@
       if (!short) $('team').replaceChildren(el('h2', { text: r.school }), el('div', { cls: 'muted', text: `${r.level} · ทีม ${r.short} · ${r.award}` }));
       slot.replaceWith(...imageWithSave(r.data, `ภาพประกาศรางวัล-ทีม-${r.short}.jpg`, 'ภาพประกาศรางวัล'));
     }).catch(err => {
-      if (!short && err.code === 'not_found' && quietIfNone) { block.remove(); return; }
+      if (!short && err.code === 'not_found' && quietIfNone) {
+        block.remove();
+        $('lkMsg').textContent += ' · ไม่มีภาพประกาศของทีมนี้ (มีเฉพาะทีมที่ได้รางวัล และแอดมินเผยแพร่ภาพแล้ว)';
+        return;
+      }
       if (!short && err.code === 'not_found') { block.remove(); $('lkMsg').textContent = 'ไม่พบภาพประกาศของรหัสทีมนี้ (มีเฉพาะทีมที่ได้รางวัล และเผยแพร่แล้ว) ถ้าต้องการเกียรติบัตร ให้กรอกเลข 4 ตัวท้ายเบอร์ครูด้วย'; return; }
       slot.replaceChildren(tag(Api.message(err), 'bad'));
     });
