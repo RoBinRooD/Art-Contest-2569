@@ -186,7 +186,7 @@
     $('section').value = SECTIONS[name] ? name : 'slips';
     $('out').replaceChildren(...fn());
     const r = Store.roster;
-    $('footer').textContent = `${DEMO ? 'ข้อมูลตัวอย่าง (ไม่ใช่ข้อมูลจริง) · ' : ''}ข้อมูลตาราง ณ ${App.dateTimeOf(r.readAt)} · ${r.counts.teams} ทีม · ระบบเกียรติบัตร 2569`;
+    $('footer').textContent = `${DEMO ? 'ข้อมูลตัวอย่าง (ไม่ใช่ข้อมูลจริง) · ' : ''}ข้อมูลตาราง ณ ${App.dateTimeOf(r.readAt)} · ${r.counts.teams} ทีม · ${r.counts.students} คน · ระบบเกียรติบัตร 2569`;
     document.title = $('section').selectedOptions[0].textContent + ' — พิมพ์';
   }
 
@@ -212,7 +212,7 @@
         });
       }
     });
-    Store.roster = { teams, readAt: new Date().toISOString().replace('Z', '+00:00'), counts: { teams: teams.length } };
+    Store.roster = { teams, readAt: new Date().toISOString().replace('Z', '+00:00'), counts: { teams: teams.length, students: teams.reduce((n, t) => n + t.members.length, 0) } };
     Store.state = {
       'attend:DEMO-D0A': { value: { state: 'present', absent: [] } },
       'attend:DEMO-D0B': { value: { state: 'partial', absent: ['demo4'] } },

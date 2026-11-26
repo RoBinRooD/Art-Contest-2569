@@ -108,7 +108,7 @@
   function renderAll() {
     const r = Store.roster;
     if (!r) return;
-    $('fresh').textContent = `ข้อมูลตาราง ณ ${timeOf(r.readAt)} · ${r.counts.teams} ทีม · แถวมีปัญหา ${r.problems.length}`;
+    $('fresh').textContent = `ข้อมูลตาราง ณ ${timeOf(r.readAt)} · ${r.counts.teams} ทีม · ${r.counts.students} คน · แถวมีปัญหา ${r.problems.length}`;
     renderRoster(r);
     renderCheckin();
     renderAwards();
@@ -164,11 +164,23 @@
     const inLevel = all.filter(t => ciLevel === 'all' || t.levelKey === ciLevel);
     const shown = inLevel.filter(t => !q || App.fold(t.short).includes(App.fold(q)) || t.school.includes(q));
 
-    const counts = { present: 0, partial: 0, absent: 0, unknown: 0, students: 0 };
-    inLevel.forEach(t => { counts[Store.attend(t.code).state]++; counts.students += App.presentMembers(t).length; });
+    // Teams and people per attendance state; for 'partial' the people are the ones who came.
+    const teams = { present: 0, partial: 0, absent: 0, unknown: 0 };
+    const people = { present: 0, partial: 0, absent: 0, unknown: 0 };
+    let total = 0, came = 0;
+    inLevel.forEach(t => {
+      const st = Store.attend(t.code).state, here = App.presentMembers(t).length;
+      teams[st]++; total += t.members.length; came += here;
+      people[st] += st === 'partial' ? here : t.members.length;
+    });
     const stat = (label, value) => el('div', { cls: 'stat' }, el('b', { text: String(value) }), label);
-    $('ciStats').replaceChildren(stat('ทีมทั้งหมด', inLevel.length), stat('มาครบ', counts.present), stat('มาไม่ครบ', counts.partial),
-      stat('ไม่มา', counts.absent), stat('ยังไม่บันทึก', counts.unknown), stat('นักเรียนที่มา', counts.students));
+    const tp = (st) => `${teams[st]} ทีม / ${people[st]} คน`;
+    $('ciStats').replaceChildren(
+      stat('ผู้เข้าร่วมที่มาแล้ว', `${came} / ${total} คน`),
+      stat('ทั้งหมด', `${inLevel.length} ทีม / ${total} คน`),
+      stat('มาครบ', tp('present')), stat('มาไม่ครบ (นับคนที่มา)', tp('partial')),
+      stat('ไม่มา', tp('absent')), stat('ยังไม่บันทึก', tp('unknown')),
+      stat('คนที่ไม่มา', `${total - came - people.unknown} คน`));
 
     $('ciList').replaceChildren(...shown.map(teamCheckinCard));
   }
