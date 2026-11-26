@@ -27,14 +27,45 @@
       showLookup(err.code === 'not_found' ? 'ลิงก์นี้ไม่ถูกต้อง ลองสแกน QR ใหม่ หรือกรอกรหัสทีมด้านล่าง' : Api.message(err));
       return;
     }
+    const box = $('certs');
+    if (r.poster) {
+      $('team').replaceChildren(el('h2', { text: `${r.school}` }), el('div', { cls: 'muted', text: `${r.level} · ทีม ${r.short}` }));
+      box.appendChild(posterBlock({ token: t }, r.short));
+    }
+    if (!r.open && r.poster) { $('status').replaceChildren(el('div', { cls: 'banner ok', text: `ทีมนี้ได้รับรางวัล${r.award || ''} เกียรติบัตรรางวัลฉบับพิมพ์จะมอบให้ตามช่องทางที่ผู้จัดแจ้ง` })); return; }
     if (!r.open) { $('status').replaceChildren(el('div', { cls: 'banner warn', text: 'ยังไม่เปิดให้รับเกียรติบัตร ระบบจะเปิดหลังประกาศผล โปรดเก็บหางบัตรนี้ไว้แล้วสแกนอีกครั้งภายหลัง' })); return; }
     if (!r.ready) { $('status').replaceChildren(el('div', { cls: 'banner warn', text: 'กำลังจัดทำเกียรติบัตรของทีมนี้ โปรดลองใหม่ภายหลัง' })); return; }
     $('status').replaceChildren();
     $('team').replaceChildren(el('h2', { text: `${r.school}` }), el('div', { cls: 'muted', text: `${r.level} · ทีม ${r.short}` }));
-    const box = $('certs');
     const hasCert = r.members.some(m => m.status === 'cert');
     if (hasCert) box.appendChild(el('p', { cls: 'muted', text: 'บันทึกรูป: กดปุ่มใต้รูป หรือกดค้างที่รูปแล้วเลือก "บันทึกรูปภาพ"' }));
     r.members.forEach(m => box.appendChild(memberBlock(t, m)));
+  }
+
+  /** The team's award poster with save/share buttons. */
+  function posterBlock(by, short) {
+    const block = el('div', { cls: 'cert' }, el('h3', { text: 'ภาพประกาศรางวัลของทีม' }));
+    const slot = el('div', { cls: 'muted', text: 'กำลังโหลดภาพ…' });
+    block.appendChild(slot);
+    call('certPoster', by).then(r => {
+      if (!short) $('team').replaceChildren(el('h2', { text: r.school }), el('div', { cls: 'muted', text: `${r.level} · ทีม ${r.short} · ${r.award}` }));
+      slot.replaceWith(...imageWithSave(r.data, `ภาพประกาศรางวัล-ทีม-${r.short}.jpg`, 'ภาพประกาศรางวัล'));
+    }).catch(err => {
+      if (!short && err.code === 'not_found') { block.remove(); $('lkMsg').textContent = 'ไม่พบภาพประกาศของรหัสทีมนี้ (มีเฉพาะทีมที่ได้รางวัล และเผยแพร่แล้ว) ถ้าต้องการเกียรติบัตร ให้กรอกเลข 4 ตัวท้ายเบอร์ครูด้วย'; return; }
+      slot.replaceChildren(tag(Api.message(err), 'bad'));
+    });
+    return block;
+  }
+
+  function imageWithSave(b64, fileName, alt) {
+    const blob = Photo.base64ToBlob(b64);
+    const url = URL.createObjectURL(blob);
+    const file = new File([blob], fileName, { type: 'image/jpeg' });
+    const actions = el('div', { cls: 'row' }, el('a', { cls: 'btn', text: 'บันทึกรูป', attrs: { href: url, download: fileName } }));
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      actions.appendChild(el('button', { cls: 'secondary', text: 'แชร์ / บันทึกลงรูปภาพ', on: { click: () => navigator.share({ files: [file], title: alt }).catch(() => {}) } }));
+    }
+    return [el('img', { attrs: { src: url, alt } }), actions];
   }
 
   function memberBlock(t, m) {
@@ -70,7 +101,15 @@
 
   $('lkGo').addEventListener('click', async () => {
     const code = $('lkCode').value.trim(), phone4 = $('lkPhone').value.trim();
-    if (!code || !/^\d{4}$/.test(phone4)) { $('lkMsg').textContent = 'กรอกรหัสทีม และเลข 4 ตัวท้ายเบอร์โทรให้ครบ'; return; }
+    if (!code) { $('lkMsg').textContent = 'กรอกรหัสทีม'; return; }
+    if (!phone4) {
+      // team code alone: the award poster only (posters are public anyway)
+      $('lkMsg').textContent = '';
+      $('team').replaceChildren(); $('certs').replaceChildren(posterBlock({ code }, ''));
+      $('status').textContent = '';
+      return;
+    }
+    if (!/^\d{4}$/.test(phone4)) { $('lkMsg').textContent = 'เลขท้ายเบอร์โทรต้องมี 4 ตัว'; return; }
     $('lkMsg').textContent = 'กำลังค้นหา…';
     try {
       const r = await call('certLookup', { code, phone4 });
