@@ -381,12 +381,44 @@
       el('button', { cls: 'secondary', text: 'คัดลอกข้อความโพสต์', on: { click: () => guarded(async () => { await navigator.clipboard.writeText(captionText(level)); $('exportLog').textContent = 'คัดลอกข้อความโพสต์แล้ว'; }) } })));
     if (posted) parts.push(posted.hash === hash ? el('div', { cls: 'banner ok', text: `ทำเครื่องหมายว่าโพสต์แล้ว (${posted.by})` })
       : el('div', { cls: 'banner bad', text: 'ข้อมูลเปลี่ยนหลังโพสต์แล้ว: ต้องเปลี่ยนรูปหรือข้อความในโพสต์ Facebook ด้วยมือ' }));
+    if (approved) {
+      const done = list.filter(sl => { const v = Store.val('poster:' + sl.team); return v && v.hash === posterHash(sl, hash); }).length;
+      parts.push(el('div', { cls: 'row', attrs: { style: 'margin-top:12px' } },
+        el('button', { cls: 'secondary', text: 'เผยแพร่ภาพให้ทีมดาวน์โหลด', on: { click: () => guarded(() => publishPosters(level)) } }),
+        el('span', { cls: 'muted', text: Store.locked()
+          ? `ทีมที่ได้รางวัลดาวน์โหลดภาพของทีมตัวเองได้ที่หน้าเกียรติบัตร (สแกน QR หางบัตร หรือกรอกรหัสทีม) · เผยแพร่แล้ว ${done}/${list.length} ภาพ`
+          : 'ต้องล็อกผลรางวัลก่อนจึงเผยแพร่ได้' })));
+    }
     if (approved) parts.push(el('button', { cls: 'link', text: 'ทำเครื่องหมายว่าโพสต์ระดับนี้แล้ว', on: { click: () => guarded(async () => {
       const e = Store.state['posted:' + level];
       await Store.set('posted:' + level, { by: App.actor(), hash }, e ? e.v : 0);
     }) } }));
     parts.push(el('div', { cls: 'muted', attrs: { id: 'exportLog' } }));
     box.replaceChildren(...parts);
+  }
+
+  // A poster is re-sent only when the approved level content, or this team's own slot, changed.
+  const posterHash = (sl, levelHash) => `${levelHash}|${sl.award}-${sl.order}|${sl.team}`;
+
+  /** Uploads each winning team's poster (Facebook size, ~1 MB) so the team can download it on the certificate page. */
+  async function publishPosters(lv) {
+    if (!Store.locked()) throw new Error('ต้องล็อกผลรางวัลก่อนจึงเผยแพร่ภาพได้');
+    const list = slots(lv), levelHash = proofHash(lv);
+    const log = $('exportLog');
+    let sent = 0, same = 0;
+    for (const sl of list) {
+      const h = posterHash(sl, levelHash), cur = Store.val('poster:' + sl.team);
+      if (cur && cur.hash === h) { same++; continue; }
+      log.textContent = `กำลังเผยแพร่ภาพ ${sent + same + 1}/${list.length}…`;
+      const c = await fullCanvas(chosen(sl.team).sha);
+      const r = await Poster.render(jobFor(sl, c), 1);
+      const blob = await Photo.toBlob(Poster.facebookCopy(r.canvas), 0.9);
+      r.canvas.width = r.canvas.height = 0;
+      const res = await Api.call('publishPoster', { code: sl.team, data: await Photo.blobToBase64(blob), hash: h, actor: App.actor() }, { timeoutMs: 120000 });
+      if (res.unchanged) same++; else sent++;
+    }
+    await Store.loadState();
+    $('exportLog').textContent = `เผยแพร่ภาพแล้ว: ใหม่ ${sent} · ไม่เปลี่ยน ${same} — ทีมที่ได้รางวัลเปิดดูได้ทันที`;
   }
 
   function captionText(lv) {
