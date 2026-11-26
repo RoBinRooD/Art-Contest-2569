@@ -414,6 +414,76 @@
   let searchTimer = 0;
   $('ciSearch').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(renderCheckin, 150); });
   $('forget').addEventListener('click', () => { Api.forget(); showConnected(false); });
+  // ---------------------------------------------------------------- quick end-to-end test data (before the event only)
+  const bangkokToday = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Bangkok' });
+  const beforeEvent = () => bangkokToday() < (window.APP_CONFIG.EVENT_DATE || '9999-12-31');
+  if (!beforeEvent()) $('seedCard').classList.add('hidden');
+
+  /** A plain test picture for a team (unique per team, so each upload is its own photo). */
+  async function testPhoto(t) {
+    const c = el('canvas', { attrs: { width: '1600', height: '1200' } });
+    const g = c.getContext('2d');
+    const hue = [...t.code].reduce((a, ch) => a + ch.charCodeAt(0), 0) % 360;
+    g.fillStyle = `hsl(${hue} 45% 82%)`; g.fillRect(0, 0, 1600, 1200);
+    g.fillStyle = `hsl(${hue} 50% 35%)`; g.fillRect(120, 120, 1360, 960);
+    g.fillStyle = '#fff'; g.textAlign = 'center'; g.font = '700 120px sans-serif';
+    g.fillText('ภาพทดสอบ', 800, 560); g.font = '700 90px sans-serif'; g.fillText('ทีม ' + t.short, 800, 700);
+    const blob = await Photo.toBlob(c, 0.9), thumb = await Photo.toBlob(Photo.drawScaled(c, 480), 0.8);
+    return { blob, thumb, width: 1600, height: 1200 };
+  }
+
+  async function seedTestData() {
+    const msg = $('seedMsg');
+    if (!beforeEvent()) { msg.textContent = 'ใช้ได้ก่อนวันงานเท่านั้น'; return; }
+    const typed = prompt('ระบบจะเช็กอินทุกทีม ใส่ผลรางวัลทดสอบ ใส่รูปทดสอบ และล็อกผล\nพิมพ์คำว่า  ข้อมูลทดสอบ  เพื่อยืนยัน');
+    if (typed === null) return;
+    if (typed.trim() !== 'ข้อมูลทดสอบ') { msg.textContent = 'พิมพ์ไม่ตรง ยังไม่ได้ทำ'; return; }
+    msg.textContent = 'กำลังอ่านข้อมูลล่าสุด…';
+    await Store.loadAll();
+    if (Store.locked()) { msg.textContent = 'ล็อกผลอยู่แล้ว — ไปลองภาพประกาศ/เกียรติบัตรได้เลย หรือกด "ล้างข้อมูลทดสอบ" ก่อนแล้วค่อยกดใหม่'; return; }
+    const teams = Store.activeTeams();
+
+    // 1. check-in
+    const todo = teams.filter(t => Store.attend(t.code).state === 'unknown');
+    for (let i = 0; i < todo.length; i++) {
+      msg.textContent = `1/4 เช็กอิน ${i + 1}/${todo.length} ทีม…`;
+      await Store.set('attend:' + todo[i].code, { state: 'present' });
+    }
+
+    // 2. awards: 1st-3rd per level, empty slots removed
+    const winners = [];
+    for (const level of LEVEL_ORDER) {
+      msg.textContent = `2/4 ใส่ผลรางวัล ${LEVEL_SHORT[level]}…`;
+      const pool = teams.filter(t => t.levelKey === level && !Store.awardOf(t.code));
+      for (const award of [1, 2, 3]) {
+        const key = `award:${level}-${award}-1`, cur = Store.state[key];
+        if (cur && cur.value && cur.value.team) { winners.push(Store.team(cur.value.team)); continue; }
+        const t = pool.shift();
+        if (!t) break;
+        await Store.set(key, { level, award, order: 1, team: t.code }, cur ? cur.v : 0);
+        winners.push(t);
+      }
+      for (const r of rowsForLevel(level).filter(r => !r.team)) await Store.set(r.key, null, r.v);
+    }
+
+    // 3. a test picture for every winner without one
+    const need = winners.filter(t => t && !Store.val('photo:' + t.code));
+    for (let i = 0; i < need.length; i++) {
+      msg.textContent = `3/4 ใส่รูปทดสอบ ${i + 1}/${need.length}…`;
+      const up = await Photo.upload(await testPhoto(need[i]), { team: need[i].code, name: 'ภาพทดสอบ-' + need[i].short + '.jpg' });
+      await Store.loadState();
+      const cur = Store.state['photo:' + need[i].code];
+      await Store.set('photo:' + need[i].code, { sha: up.sha, corners: [[0.03, 0.03], [0.97, 0.03], [0.97, 0.97], [0.03, 0.97]], rot: 0, fit: 'auto', paper: 'auto' }, cur ? cur.v : 0);
+    }
+
+    // 4. lock
+    msg.textContent = '4/4 ล็อกผล…';
+    const lock = Store.state.lock;
+    await Store.set('lock', { locked: true }, lock ? lock.v : 0);
+    msg.textContent = 'พร้อมแล้ว ✓ ต่อไป: แท็บภาพประกาศ → ยืนยัน → เผยแพร่ภาพ · แท็บเกียรติบัตร → เลือกเทมเพลต → เผยแพร่ → เปิดให้ดาวน์โหลด · ลองด้วยมือถือ · เสร็จแล้วกด "ล้างข้อมูลทดสอบ"';
+  }
+  $('seedTest').addEventListener('click', () => guarded(seedTestData));
+
   $('resetTest').addEventListener('click', () => guarded(async () => {
     const typed = prompt('พิมพ์คำว่า  ล้างข้อมูลทดสอบ  เพื่อยืนยัน\n(ล้างเช็กอิน ผลรางวัล การล็อก รูปทั้งหมด การจัดภาพ และการยืนยัน)');
     if (typed === null) return;
