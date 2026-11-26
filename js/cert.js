@@ -43,7 +43,7 @@
   }
 
   /** The team's award poster with save/share buttons. */
-  function posterBlock(by, short) {
+  function posterBlock(by, short, quietIfNone) {
     const block = el('div', { cls: 'cert' }, el('h3', { text: 'ภาพประกาศรางวัลของทีม' }));
     const slot = el('div', { cls: 'muted', text: 'กำลังโหลดภาพ…' });
     block.appendChild(slot);
@@ -51,6 +51,7 @@
       if (!short) $('team').replaceChildren(el('h2', { text: r.school }), el('div', { cls: 'muted', text: `${r.level} · ทีม ${r.short} · ${r.award}` }));
       slot.replaceWith(...imageWithSave(r.data, `ภาพประกาศรางวัล-ทีม-${r.short}.jpg`, 'ภาพประกาศรางวัล'));
     }).catch(err => {
+      if (!short && err.code === 'not_found' && quietIfNone) { block.remove(); return; }
       if (!short && err.code === 'not_found') { block.remove(); $('lkMsg').textContent = 'ไม่พบภาพประกาศของรหัสทีมนี้ (มีเฉพาะทีมที่ได้รางวัล และเผยแพร่แล้ว) ถ้าต้องการเกียรติบัตร ให้กรอกเลข 4 ตัวท้ายเบอร์ครูด้วย'; return; }
       slot.replaceChildren(tag(Api.message(err), 'bad'));
     });
@@ -118,6 +119,13 @@
       $('lookup').classList.add('hidden');
       location.hash = 't=' + r.token;
     } catch (err) {
+      if (err.code === 'not_open') {
+        // certificates are not open yet, but a winning team's poster may already be there
+        $('lkMsg').textContent = 'ยังไม่เปิดให้รับเกียรติบัตร ระบบจะเปิดหลังประกาศผล';
+        $('team').replaceChildren(); $('certs').replaceChildren(posterBlock({ code }, '', true));
+        $('status').textContent = '';
+        return;
+      }
       $('lkMsg').textContent = err.code === 'not_found' ? 'ไม่พบข้อมูลที่ตรงกัน ตรวจรหัสทีมและเบอร์โทรอีกครั้ง' : Api.message(err);
     }
   });
