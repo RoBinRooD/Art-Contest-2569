@@ -147,6 +147,20 @@
     }));
   }
 
+  // Expected final turnout: people already here, plus the not-yet-recorded people
+  // scaled by the share of recorded people who came. Before any record, assume everyone comes.
+  function forecastStat(total, came, pending) {
+    const recorded = total - pending;
+    const rate = recorded ? came / recorded : 1;
+    const expect = Math.round(came + pending * rate);
+    const box = el('div', { cls: 'stat' }, el('b', { text: `≈ ${expect} คน` }), 'คาดว่าจะมาทั้งหมด');
+    box.appendChild(el('div', { cls: 'muted', text: pending
+      ? (recorded ? `อัตรามา ${Math.round(rate * 100)}% จาก ${recorded} คนที่บันทึกแล้ว · ช่วง ${came}–${came + pending} คน`
+                  : 'ยังไม่มีการบันทึก จึงคิดว่ามาครบทุกคน')
+      : 'บันทึกครบทุกทีมแล้ว (ตัวเลขจริง)' }));
+    return box;
+  }
+
   function memberLine(m) {
     const line = el('div', {}, m.printName);
     if (m.titleState === 'none') line.appendChild(tag('ไม่มีคำนำหน้า', 'warn'));
@@ -180,7 +194,8 @@
       stat('ทั้งหมด', `${inLevel.length} ทีม / ${total} คน`),
       stat('มาครบ', tp('present')), stat('มาไม่ครบ (นับคนที่มา)', tp('partial')),
       stat('ไม่มา', tp('absent')), stat('ยังไม่บันทึก', tp('unknown')),
-      stat('คนที่ไม่มา', `${total - came - people.unknown} คน`));
+      stat('คนที่ไม่มา', `${total - came - people.unknown} คน`),
+      forecastStat(total, came, people.unknown));
 
     $('ciList').replaceChildren(...shown.map(teamCheckinCard));
   }
