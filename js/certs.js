@@ -291,15 +291,22 @@
   async function awardExport() {
     const msg = $('awardMsg');
     if (!Store.locked()) throw new Error('ต้องล็อกผลรางวัลก่อนจึงส่งออกเกียรติบัตรรางวัลได้');
-    await loadAwardTemplates();
-    const items = awardItems();
-    if (!items.length) throw new Error('ยังไม่มีผลรางวัล');
-    const noTpl = items.filter(i => !tplForAward(i.award));
-    if (noTpl.length) throw new Error('ยังไม่มีเทมเพลตของรางวัล: ' + [...new Set(noTpl.map(i => AWARD_LABEL[i.award]))].join(', '));
+    if (!awardItems().length) throw new Error('ยังไม่มีผลรางวัล');
+    // The folder picker must open straight from the click (the browser refuses it after a long wait),
+    // so it comes before loading the templates.
     let dir = null;
     if (window.showDirectoryPicker) {
-      try { dir = await window.showDirectoryPicker({ mode: 'readwrite' }); } catch (e) { if (e.name === 'AbortError') return; }
+      try { dir = await window.showDirectoryPicker({ id: 'award-certificates', mode: 'readwrite', startIn: 'documents' }); }
+      catch (e) {
+        if (e.name === 'AbortError') { msg.textContent = 'ยกเลิกการเลือกโฟลเดอร์'; return; }
+        msg.textContent = `เลือกโฟลเดอร์ไม่ได้ (${e.message || e.name}) — จะดาวน์โหลดเป็นไฟล์รวมของแต่ละระดับแทน`;
+      }
     }
+    msg.textContent = 'กำลังโหลดเทมเพลตรางวัล…';
+    await loadAwardTemplates();
+    const items = awardItems();
+    const noTpl = items.filter(i => !tplForAward(i.award));
+    if (noTpl.length) throw new Error('ยังไม่มีเทมเพลตของรางวัล: ' + [...new Set(noTpl.map(i => AWARD_LABEL[i.award]))].join(', '));
     const write = async (path, blob) => {
       if (!dir) { const a = el('a', { attrs: { href: URL.createObjectURL(blob), download: path.replace(/\//g, '_') } }); document.body.appendChild(a); a.click(); a.remove(); await new Promise(r => setTimeout(r, 400)); return; }
       const ps = path.split('/');
