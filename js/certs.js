@@ -153,6 +153,11 @@
   // Same name position as the participation certificate; a small up/down shift (setting:awardNameShift, share of
   // the height) fixes a template whose name line sits elsewhere.
   let nameShift = 0;
+  // Participation certificate: the same kind of shift (setting:certNameShift); by default 2% lower than the
+  // original name box, which left the name too close to the line above it on the real template.
+  const CERT_SHIFT_DEFAULT = 0.02;
+  let certShift = CERT_SHIFT_DEFAULT;
+  const shiftText = v => v > 0 ? `ลง ${(v * 100).toFixed(0)}%` : v < 0 ? `ขึ้น ${(-v * 100).toFixed(0)}%` : 'ตำแหน่งเดิม';
   const AWARD_KINDS = ['award-1', 'award-2', 'award-3', 'award-4', 'award'];
   const awardTpl = {};   // kind -> {img, sha}
 
@@ -277,7 +282,7 @@
     nameShift = Math.round((nameShift + delta) * 1000) / 1000;
     const cur = Store.state['setting:awardNameShift'];
     await Store.set('setting:awardNameShift', nameShift, cur ? cur.v : 0);
-    $('awardShift').textContent = `ตำแหน่งชื่อ: ${nameShift > 0 ? 'ลง' : nameShift < 0 ? 'ขึ้น' : 'ตามเกียรติบัตรผู้เข้าร่วม'} ${nameShift ? Math.abs(nameShift * 100).toFixed(1) + '%' : ''}`;
+    $('awardShift').textContent = 'ตำแหน่งชื่อ: ' + shiftText(nameShift);
     await awardPreview();
   }
 
@@ -293,7 +298,7 @@
     // browser's memory on a big contest.
     let done = 0;
     for (const it of items) {
-      const r = await render(it.name, it.team.school, 0.22);
+      const r = await render(it.name, it.team.school, 0.22, template, certShift);
       const img = el('img', { cls: 'cert-thumb', attrs: { alt: it.name, loading: 'lazy' } });
       img.src = URL.createObjectURL(await Photo.toBlob(r.canvas, 0.8));
       r.canvas.width = r.canvas.height = 0;
@@ -308,7 +313,7 @@
   const TRANSIENT = ['busy', 'timeout', 'network', 'server_error', 'not_json'];
 
   async function publishOne(it, hash) {
-    const r = await render(it.name, it.team.school, 1);
+    const r = await render(it.name, it.team.school, 1, template, certShift);
     const data = await Photo.blobToBase64(await Photo.toBlob(r.canvas, 0.88));
     r.canvas.width = r.canvas.height = 0;
     for (let attempt = 1; ; attempt++) {
@@ -336,7 +341,7 @@
       const todo = [];
       let sent = 0, same = 0;
       items.forEach(it => {
-        const hash = fnv(`${it.name}|${it.team.school}|${LAYOUT}|${Poster.font}|${templateSig}`);
+        const hash = fnv(`${it.name}|${it.team.school}|${LAYOUT}|${certShift}|${Poster.font}|${templateSig}`);
         const cur = Store.val('cert:' + it.sid);
         if (cur && cur.hash === hash) same++; else todo.push({ it, hash });
       });
@@ -410,7 +415,20 @@
   $('awardExport').addEventListener('click', () => guarded(awardExport, 'awardMsg'));
   $('awardUp').addEventListener('click', () => guarded(() => saveNameShift(-0.01), 'awardMsg'));
   $('awardDown').addEventListener('click', () => guarded(() => saveNameShift(0.01), 'awardMsg'));
-  Store.on(() => { const v = Store.val('setting:awardNameShift'); nameShift = typeof v === 'number' ? v : 0; });
+  Store.on(() => {
+    const v = Store.val('setting:awardNameShift'); nameShift = typeof v === 'number' ? v : 0;
+    const w = Store.val('setting:certNameShift'); certShift = typeof w === 'number' ? w : CERT_SHIFT_DEFAULT;
+    $('awardShift').textContent = 'ตำแหน่งชื่อ: ' + shiftText(nameShift);
+    $('certShift').textContent = 'ตำแหน่งชื่อ: ' + shiftText(certShift);
+  });
+  async function saveCertShift(delta) {
+    certShift = Math.round((certShift + delta) * 1000) / 1000;
+    const cur = Store.state['setting:certNameShift'];
+    await Store.set('setting:certNameShift', certShift, cur ? cur.v : 0);
+    await preview();
+  }
+  $('certUp').addEventListener('click', () => guarded(() => saveCertShift(-0.01), 'certPreviewMsg'));
+  $('certDown').addEventListener('click', () => guarded(() => saveCertShift(0.01), 'certPreviewMsg'));
   $('tplImport').addEventListener('click', () => guarded(importFromDrive, 'tplResult'));
   $('certPublish').addEventListener('click', () => guarded(publish, 'certPublishMsg'));
   $('certOpen').addEventListener('click', () => guarded(toggleOpen, 'certPublishMsg'));
