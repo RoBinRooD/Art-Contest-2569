@@ -1,5 +1,6 @@
 // Admin tab "เกียรติบัตร": render participation certificates on this computer, review them, publish to Drive,
-// and open the public download page. The blank template never leaves this computer except as finished certificates.
+// and open the public download page. The blank template is kept in the system's private Drive folder (admin only)
+// and loaded automatically on any admin computer; it never appears on the public web.
 (function () {
   const { el, tag, LEVEL_SHORT, AWARD_LABEL, Store } = App;
   const $ = id => document.getElementById(id);
@@ -66,17 +67,79 @@
     $('certPublish').disabled = !Store.locked() || !template;
   }
 
-  async function loadTemplate(file) {
-    const img = await Photo.loadFile(file);
-    template = img;
-    templateSig = `${file.name}|${file.size}|${img.naturalWidth}x${img.naturalHeight}`;
+  function showTemplate(img, label) {
     const okSize = img.naturalWidth === 2339 && img.naturalHeight === 1654;
-    $('certTemplateStatus').replaceChildren(tag(okSize ? 'พร้อม' : 'ขนาดไม่ตรงเทมเพลตเดิม', okSize ? 'ok' : 'warn'), ` ${file.name} (${img.naturalWidth}×${img.naturalHeight})`);
+    $('certTemplateStatus').replaceChildren(tag(okSize ? 'พร้อม' : 'ขนาดไม่ตรงเทมเพลตเดิม', okSize ? 'ok' : 'warn'), ` ${label} (${img.naturalWidth}×${img.naturalHeight})`);
+  }
+
+  /** Uploads a new template to the system (once); every admin computer then uses it. */
+  async function loadTemplate(file) {
+    $('certTemplateStatus').textContent = 'กำลังอัปโหลดเทมเพลตเข้าระบบ…';
+    const img = await Photo.loadFile(file);
+    const r = await Api.call('saveTemplate', { kind: 'participation', data: await Photo.blobToBase64(file), name: file.name,
+      width: img.naturalWidth, height: img.naturalHeight, actor: App.actor() }, { timeoutMs: 120000 });
+    template = img;
+    templateSig = 'sha:' + r.sha;
+    await Store.loadState();
+    showTemplate(img, `${file.name} · เก็บในระบบแล้ว`);
     renderSummary();
   }
 
+  /** Loads the stored template the first time it is needed on this computer. */
+  let fetching = null;
+  function ensureTemplate() {
+    const stored = Store.val('template:participation');
+    if (!stored) {
+      if (!template) $('certTemplateStatus').textContent = 'ยังไม่มีเทมเพลตในระบบ — อัปโหลดครั้งเดียว';
+      return Promise.resolve(template);
+    }
+    if (template && templateSig === 'sha:' + stored.sha) return Promise.resolve(template);
+    if (!fetching) fetching = (async () => {
+      $('certTemplateStatus').textContent = 'กำลังโหลดเทมเพลตจากระบบ…';
+      try {
+        const r = await Api.call('getTemplate', { kind: 'participation' }, { timeoutMs: 120000 });
+        const img = await Photo.loadFile(Photo.base64ToBlob(r.data, r.mime));
+        template = img; templateSig = 'sha:' + r.sha;
+        showTemplate(img, `${stored.name || 'เทมเพลต'} · จากระบบ`);
+        renderSummary();
+        return img;
+      } finally { fetching = null; }
+    })();
+    return fetching;
+  }
+
+  // ---------------------------------------------------------------- templates from the owner's Google Drive folder
+  const KIND_LABEL = { participation: 'เกียรติบัตรผู้เข้าร่วม', award: 'เกียรติบัตรรางวัล (แบบเดียว)', 'award-1': 'ชนะเลิศ',
+    'award-2': 'รองชนะเลิศอันดับ 1', 'award-3': 'รองชนะเลิศอันดับ 2', 'award-4': 'ชมเชย' };
+  const STATUS_LABEL = { stored: ['เก็บเข้าระบบแล้ว', 'ok'], unchanged: ['มีอยู่แล้ว (ไม่เปลี่ยน)', 'ok'], duplicate_kind: ['ซ้ำประเภท — ใช้ไฟล์แรก', 'warn'],
+    not_template: ['ไม่ใช่เทมเพลต (ข้าม)', 'muted'], too_big: ['ไฟล์ใหญ่เกิน 15 MB', 'bad'] };
+
+  async function importFromDrive() {
+    const box = $('tplResult');
+    const link = $('tplFolder').value.trim() || (Store.val('setting:templateFolder') || '');
+    if (!link) { box.textContent = 'วางลิงก์โฟลเดอร์ Google Drive ก่อน'; return; }
+    box.textContent = 'กำลังอ่านโฟลเดอร์ใน Drive…';
+    const r = await Api.call('importTemplates', { folder: link, actor: App.actor() }, { retries: 0, timeoutMs: 300000 });
+    const cur = Store.state['setting:templateFolder'];
+    if (Store.val('setting:templateFolder') !== link) await Store.set('setting:templateFolder', link, cur ? cur.v : 0);
+    await Store.loadState();
+    template = null; templateSig = '';           // the stored participation template may have changed
+    await ensureTemplate();
+    const kinds = new Set(r.templates.filter(t => t.status === 'stored' || t.status === 'unchanged').map(t => t.kind));
+    box.replaceChildren(
+      el('div', { cls: 'banner ' + (kinds.has('participation') ? 'ok' : 'warn'), text: `โฟลเดอร์ "${r.folderName}": พบเทมเพลต ${kinds.size} แบบ — ${[...kinds].map(k => KIND_LABEL[k]).join(' · ') || 'ไม่พบ'}` }),
+      el('table', {}, el('tbody', {}, r.templates.map(t => el('tr', {},
+        el('td', { text: t.name }), el('td', { text: KIND_LABEL[t.kind] || '—' }),
+        el('td', {}, tag(...(STATUS_LABEL[t.status] || [t.status, 'muted']))))))),
+      ...r.notes.map(n => el('details', { attrs: { style: 'margin-top:8px' } },
+        el('summary', { text: `ไฟล์ตั้งค่า: ${n.name}` }),
+        el('button', { cls: 'link', text: 'คัดลอกข้อความ', on: { click: async () => { await navigator.clipboard.writeText(n.text); } } }),
+        el('pre', { attrs: { style: 'max-height:240px;overflow:auto;white-space:pre-wrap;font-size:12px' }, text: n.text }))));
+  }
+
   async function preview() {
-    if (!template) { $('certPreviewMsg').textContent = 'เลือกไฟล์เทมเพลตก่อน'; return; }
+    await ensureTemplate();
+    if (!template) { $('certPreviewMsg').textContent = 'ยังไม่มีเทมเพลต — อัปโหลดครั้งแรกในข้อ 1'; return; }
     const grid = $('certGrid');
     grid.querySelectorAll('img').forEach(i => URL.revokeObjectURL(i.src));
     grid.replaceChildren();
@@ -122,6 +185,8 @@
       // Fresh state first, so a second press after an interruption skips everything already uploaded.
       msg.textContent = 'กำลังตรวจว่าอัปโหลดอะไรไปแล้วบ้าง…';
       await Store.loadState();
+      await ensureTemplate();
+      if (!template) throw new Error('ยังไม่มีเทมเพลต — อัปโหลดครั้งแรกในข้อ 1');
       const p = plan();
       const items = p.flatMap(x => x.members.filter(m => m.status === 'cert').map(m => ({ ...m, team: x.team })));
       const todo = [];
@@ -197,12 +262,15 @@
 
   $('certTemplate').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f) guarded(() => loadTemplate(f), 'certTemplateStatus'); });
   $('certPreview').addEventListener('click', () => guarded(preview, 'certPreviewMsg'));
+  $('tplImport').addEventListener('click', () => guarded(importFromDrive, 'tplResult'));
   $('certPublish').addEventListener('click', () => guarded(publish, 'certPublishMsg'));
   $('certOpen').addEventListener('click', () => guarded(toggleOpen, 'certPublishMsg'));
   $('certLinks').addEventListener('click', () => guarded(showLinks));
   // Only while this tab is open; opening the tab renders it.
-  Store.on(() => { if (!$('tab-certs').classList.contains('hidden')) renderSummary(); });
+  const certsVisible = () => !$('tab-certs').classList.contains('hidden');
+  const onShow = () => { renderSummary(); ensureTemplate().catch(err => { $('certTemplateStatus').textContent = Api.message(err); }); };
+  Store.on(() => { if (certsVisible()) onShow(); });
   const tabBtn = document.querySelector('#tabs button[data-tab="certs"]');
-  if (tabBtn) tabBtn.addEventListener('click', renderSummary);
+  if (tabBtn) tabBtn.addEventListener('click', onShow);
   window.CertsTab = { plan, render, _setTemplate: (img, sig) => { template = img; templateSig = sig; renderSummary(); } };
 })();
