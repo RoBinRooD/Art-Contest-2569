@@ -109,8 +109,8 @@
     if (!fetching) fetching = (async () => {
       $('certTemplateStatus').textContent = 'กำลังโหลดเทมเพลตจากระบบ…';
       try {
-        const r = await Api.call('getTemplate', { kind: 'participation' }, { timeoutMs: 120000 });
-        const img = await Photo.loadFile(Photo.base64ToBlob(r.data, r.mime));
+        const r = await Api.call('getTemplate', { kind: 'participation' }, { timeoutMs: 180000 });
+        const img = (await templateFrom(r)).img;
         template = img; templateSig = 'sha:' + r.sha;
         showTemplate(img, `${stored.name || 'เทมเพลต'} · จากระบบ`);
         renderSummary();
@@ -141,7 +141,7 @@
     box.replaceChildren(
       el('div', { cls: 'banner ' + (kinds.has('participation') ? 'ok' : 'warn'), text: `โฟลเดอร์ "${r.folderName}": พบเทมเพลต ${kinds.size} แบบ — ${[...kinds].map(k => KIND_LABEL[k]).join(' · ') || 'ไม่พบ'}` }),
       el('table', {}, el('tbody', {}, r.templates.map(t => el('tr', {},
-        el('td', { text: t.name }), el('td', { text: KIND_LABEL[t.kind] || '—' }),
+        el('td', { text: t.name }), el('td', { text: (KIND_LABEL[t.kind] || '—') + (t.pdf ? ' (PDF)' : '') }),
         el('td', {}, tag(...(STATUS_LABEL[t.status] || [t.status, 'muted']))))))),
       ...r.notes.map(n => el('details', { attrs: { style: 'margin-top:8px' } },
         el('summary', { text: `ไฟล์ตั้งค่า: ${n.name}` }),
@@ -156,16 +156,56 @@
   const AWARD_KINDS = ['award-1', 'award-2', 'award-3', 'award-4', 'award'];
   const awardTpl = {};   // kind -> {img, sha}
 
+  // PDF templates (the printed award certificate) are drawn with PDF.js at print resolution (long side 3508 px,
+  // 300 dpi on A4); the page size in points is kept so the exported PDF has the template's own page size.
+  let pdfjsReady = null;
+  function loadPdfJs() {
+    if (!pdfjsReady) pdfjsReady = new Promise((resolve, reject) => {
+      if (window.pdfjsLib) return resolve(window.pdfjsLib);
+      const sc = document.createElement('script');
+      sc.src = 'js/vendor/pdfjs/pdf.min.js';
+      sc.onload = () => { window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'js/vendor/pdfjs/pdf.worker.min.js'; resolve(window.pdfjsLib); };
+      sc.onerror = () => { pdfjsReady = null; reject(new Error('โหลดตัวอ่าน PDF ไม่ได้')); };
+      document.head.appendChild(sc);
+    });
+    return pdfjsReady;
+  }
+
+  async function pdfTemplate(base64) {
+    const lib = await loadPdfJs();
+    const bin = atob(base64), bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const doc = await lib.getDocument({ data: bytes, isEvalSupported: false }).promise;
+    const page = await doc.getPage(1);
+    const vp1 = page.getViewport({ scale: 1 });
+    const vp = page.getViewport({ scale: 3508 / Math.max(vp1.width, vp1.height) });
+    const c = document.createElement('canvas');
+    c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+    await page.render({ canvasContext: ctx, viewport: vp }).promise;
+    doc.destroy();
+    c.naturalWidth = c.width; c.naturalHeight = c.height;   // render() reads these like an <img>
+    return { img: c, pageW: vp1.width, pageH: vp1.height };
+  }
+
+  async function templateFrom(r) {
+    if (r.mime === 'application/pdf') return pdfTemplate(r.data);
+    return { img: await Photo.loadFile(Photo.base64ToBlob(r.data, r.mime)) };
+  }
+
   async function loadAwardTemplates() {
     for (const kind of AWARD_KINDS) {
       const stored = Store.val('template:' + kind);
       if (!stored) { delete awardTpl[kind]; continue; }
       if (awardTpl[kind] && awardTpl[kind].sha === stored.sha) continue;
-      const r = await Api.call('getTemplate', { kind }, { timeoutMs: 120000 });
-      awardTpl[kind] = { img: await Photo.loadFile(Photo.base64ToBlob(r.data, r.mime)), sha: r.sha };
+      const r = await Api.call('getTemplate', { kind }, { timeoutMs: 180000 });
+      awardTpl[kind] = { ...(await templateFrom(r)), sha: r.sha, pdf: r.mime === 'application/pdf' };
     }
   }
-  const tplForAward = a => (awardTpl['award-' + a] || awardTpl.award || {}).img || null;
+  // The award's own template or the general award one; a PDF (the printed certificate) wins over an image.
+  const awardTplFor = a => [awardTpl['award-' + a], awardTpl.award].filter(Boolean).sort((x, y) => (y.pdf ? 1 : 0) - (x.pdf ? 1 : 0))[0] || null;
+  const tplForAward = a => (awardTplFor(a) || {}).img || null;
 
   /** One award certificate per member of every winning team (a team of 3 = 3 certificates). Members recorded as
    *  absent are still listed, flagged for the admin to check. */
@@ -218,12 +258,15 @@
     let size = 0;
     const push = x => { const b = typeof x === 'string' ? enc.encode(x) : x; parts.push(b); size += b.length; };
     const obj = (n, body) => { offsets[n] = size; push(`${n} 0 obj\n`); body(); push('\nendobj\n'); };
-    const W = 841.89, H = 595.28, n = jpegs.length;
+    const n = jpegs.length;
+    // page size: the PDF template's own, else A4 in the image's orientation
+    const pageSize = j => j.pw ? [j.pw, j.ph] : (j.w >= j.h ? [841.89, 595.28] : [595.28, 841.89]);
     push('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n');
     obj(1, () => push('<< /Type /Catalog /Pages 2 0 R >>'));
     obj(2, () => push(`<< /Type /Pages /Count ${n} /Kids [${jpegs.map((_, i) => `${3 + i * 3} 0 R`).join(' ')}] >>`));
     jpegs.forEach((j, i) => {
       const page = 3 + i * 3, content = page + 1, image = page + 2;
+      const [W, H] = pageSize(j);
       const draw = `q ${W} 0 0 ${H} 0 0 cm /Im0 Do Q`;
       obj(page, () => push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${W} ${H}] /Resources << /XObject << /Im0 ${image} 0 R >> >> /Contents ${content} 0 R >>`));
       obj(content, () => { push(`<< /Length ${draw.length} >>\nstream\n`); push(draw); push('\nendstream'); });
@@ -264,7 +307,8 @@
       msg.textContent = `กำลังสร้าง ${i + 1}/${items.length} ใบ…`;
       const r = await render(it.name, it.team.school, 1, tplForAward(it.award), nameShift);
       const blob = await Photo.toBlob(r.canvas, 0.92);
-      const jpeg = { bytes: new Uint8Array(await blob.arrayBuffer()), w: r.canvas.width, h: r.canvas.height };
+      const t = awardTplFor(it.award);
+      const jpeg = { bytes: new Uint8Array(await blob.arrayBuffer()), w: r.canvas.width, h: r.canvas.height, pw: t.pageW, ph: t.pageH };
       r.canvas.width = r.canvas.height = 0;
       const lv = `${it.li + 1}_${App.LEVEL_SHORT[it.level]}`, aw = `${it.award}_${AWARD_LABEL[it.award]}`;
       if (dir) await write(`เกียรติบัตรรางวัล/${lv}/${aw}/${safeName(it.team.short + '_' + it.name)}.pdf`, pdfFromJpegs([jpeg]));

@@ -8,6 +8,7 @@
 - `upload.html` — หน้าส่งรูปผลงานจากมือถือ (เปิดจาก QR ในหน้าแอดมิน)
 - `js/vendor/qrcode.js` — qrcode-generator 1.4.4 © Kazuhiko Arase, MIT License
 - `js/vendor/jsQR.js` — jsQR 1.4.0, Apache License 2.0
+- `js/vendor/pdfjs/` — PDF.js (pdfjs-dist) 3.11.174 © Mozilla, Apache License 2.0 (`LICENSE`) ใช้อ่านเทมเพลตเกียรติบัตรรางวัลที่เป็น PDF
 - `assets/fonts/Mitr-*.ttf` — Mitr © The Mitr Project Authors, SIL Open Font License 1.1 (`Mitr-OFL.txt`)
 
 ห้ามใส่ข้อมูลนักเรียน คีย์ ฟอนต์เชิงพาณิชย์ หรือไฟล์ PDF เกียรติบัตรลงใน repo นี้
