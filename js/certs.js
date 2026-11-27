@@ -288,62 +288,60 @@
   const safeName = s => String(s).replace(/[\\/:*?"<>|]+/g, '').replace(/\s+/g, ' ').trim();
 
   /** PDFs per person in level/award folders, plus one print-ready PDF per level. */
-  // Progress is shown on the button itself and in a banner, so a long export is never mistaken for a dead click.
+  // Printed award certificates go straight into the system's Google Drive (no folder picker, no permission prompt):
+  // one PDF per person in level/award folders, plus one print-ready PDF per level. Progress shows on the button
+  // and in a banner. Pages are drawn at ~210 dpi on A4 (long side 2480 px) to keep each upload small.
+  const PRINT_LONG_SIDE = 2480;
+
   async function awardExport() {
     const btn = $('awardExport'), label = btn.textContent;
     btn.disabled = true;
     try { await awardExportRun(); } finally { btn.disabled = false; btn.textContent = label; }
   }
 
-  async function awardExportRun() {
-    const box = $('awardMsg'), btn = $('awardExport');
-    const msg = { set textContent(t) { box.replaceChildren(el('div', { cls: 'banner ' + (/^เสร็จ/.test(t) ? 'ok' : 'warn'), text: t })); btn.textContent = /^เสร็จ/.test(t) ? 'ส่งออกเสร็จ' : 'กำลังส่งออก…'; } };
-    if (!Store.locked()) throw new Error('ต้องล็อกผลรางวัลก่อนจึงส่งออกเกียรติบัตรรางวัลได้');
-    if (!awardItems().length) throw new Error('ยังไม่มีผลรางวัล');
-    // The folder picker must open straight from the click (the browser refuses it after a long wait),
-    // so it comes before loading the templates.
-    let dir = null;
-    if (window.showDirectoryPicker) {
-      msg.textContent = 'เลือกโฟลเดอร์ แล้วกด "อนุญาต / แก้ไขไฟล์" ที่ Chrome ถาม…';
-      try { dir = await window.showDirectoryPicker({ id: 'award-certificates', mode: 'readwrite', startIn: 'documents' }); }
-      catch (e) {
-        if (e.name === 'AbortError') { msg.textContent = 'ยกเลิกการเลือกโฟลเดอร์'; return; }
-        msg.textContent = `เลือกโฟลเดอร์ไม่ได้ (${e.message || e.name}) — จะดาวน์โหลดเป็นไฟล์รวมของแต่ละระดับแทน`;
+  async function uploadPdf(folders, name, blob) {
+    const data = await Photo.blobToBase64(blob);
+    for (let attempt = 1; ; attempt++) {
+      try { return await Api.call('saveAwardPdf', { folders, name, data, actor: App.actor() }, { timeoutMs: 300000, retries: 0 }); }
+      catch (err) {
+        if (attempt >= 3 || !TRANSIENT.includes(err.code)) throw err;
+        await new Promise(r => setTimeout(r, 4000 * attempt));
       }
     }
-    const folderName = dir && dir.name ? dir.name + "/" : "";
-    const where = dir ? `โฟลเดอร์ "${(dir && dir.name) || "ที่เลือก"}" · ` : '';
-    msg.textContent = where + 'กำลังโหลดเทมเพลตรางวัลจากระบบ (PDF อาจใช้เวลา 10–30 วินาที)…';
+  }
+
+  async function awardExportRun() {
+    const box = $('awardMsg'), btn = $('awardExport');
+    const show = (t, done) => { box.replaceChildren(el('div', { cls: 'banner ' + (done ? 'ok' : 'warn'), text: t })); btn.textContent = done ? 'ส่งออกเสร็จ' : 'กำลังส่งออก…'; };
+    if (!Store.locked()) throw new Error('ต้องล็อกผลรางวัลก่อนจึงส่งออกเกียรติบัตรรางวัลได้');
+    if (!awardItems().length) throw new Error('ยังไม่มีผลรางวัล');
+    show('กำลังโหลดเทมเพลตรางวัลจากระบบ (PDF อาจใช้เวลา 10–30 วินาที)…');
     await Promise.race([loadAwardTemplates(), new Promise((_, no) => setTimeout(() => no(new Error('โหลดเทมเพลตรางวัลนานเกิน 2 นาที — ลองกดอีกครั้ง')), 120000))]);
     const items = awardItems();
     const noTpl = items.filter(i => !tplForAward(i.award));
     if (noTpl.length) throw new Error('ยังไม่มีเทมเพลตของรางวัล: ' + [...new Set(noTpl.map(i => AWARD_LABEL[i.award]))].join(', '));
-    const write = async (path, blob) => {
-      if (!dir) { const a = el('a', { attrs: { href: URL.createObjectURL(blob), download: path.replace(/\//g, '_') } }); document.body.appendChild(a); a.click(); a.remove(); await new Promise(r => setTimeout(r, 400)); return; }
-      const ps = path.split('/');
-      let d = dir;
-      for (const p of ps.slice(0, -1)) d = await d.getDirectoryHandle(p, { create: true });
-      const w = await (await d.getFileHandle(ps[ps.length - 1], { create: true })).createWritable(); await w.write(blob); await w.close();
-    };
     const byLevel = {};
+    let folderUrl = '';
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
-      msg.textContent = `${where}กำลังสร้าง ${i + 1}/${items.length} ใบ…`;
-      const r = await render(it.name, it.team.school, 1, tplForAward(it.award), nameShift);
-      const blob = await Photo.toBlob(r.canvas, 0.92);
+      show(`กำลังสร้างและอัปโหลดขึ้น Google Drive ${i + 1}/${items.length} ใบ… (อย่าปิดหน้านี้)`);
+      const img = tplForAward(it.award);
+      const scale = Math.min(1, PRINT_LONG_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
+      const r = await render(it.name, it.team.school, scale, img, nameShift);
+      const blob = await Photo.toBlob(r.canvas, 0.9);
       const t = awardTplFor(it.award);
       const jpeg = { bytes: new Uint8Array(await blob.arrayBuffer()), w: r.canvas.width, h: r.canvas.height, pw: t.pageW, ph: t.pageH };
       r.canvas.width = r.canvas.height = 0;
       const lv = `${it.li + 1}_${App.LEVEL_SHORT[it.level]}`, aw = `${it.award}_${AWARD_LABEL[it.award]}`;
-      if (dir) await write(`เกียรติบัตรรางวัล/${lv}/${aw}/${safeName(it.team.short + '_' + it.name)}.pdf`, pdfFromJpegs([jpeg]));
+      folderUrl = (await uploadPdf([lv, aw], `${safeName(it.team.short + '_' + it.name)}.pdf`, pdfFromJpegs([jpeg]))).folderUrl || folderUrl;
       (byLevel[lv] = byLevel[lv] || []).push(jpeg);
     }
     for (const [lv, list] of Object.entries(byLevel)) {
-      msg.textContent = `กำลังรวมไฟล์สำหรับพิมพ์ ${lv}…`;
-      await write(`เกียรติบัตรรางวัล/${lv}/รวมสำหรับพิมพ์_${lv}.pdf`, pdfFromJpegs(list));
+      show(`กำลังรวมไฟล์สำหรับพิมพ์ ${lv} (${list.length} หน้า) และอัปโหลด…`);
+      folderUrl = (await uploadPdf([lv], `รวมสำหรับพิมพ์_${lv}.pdf`, pdfFromJpegs(list))).folderUrl || folderUrl;
     }
-    msg.textContent = dir ? `เสร็จ: ${items.length} ใบ ในโฟลเดอร์ "${folderName}เกียรติบัตรรางวัล" แยกตามระดับชั้นและรางวัล + ไฟล์รวมสำหรับพิมพ์ของแต่ละระดับ`
-      : `ดาวน์โหลดไฟล์รวมสำหรับพิมพ์แล้ว ${Object.keys(byLevel).length} ไฟล์ (เบราว์เซอร์นี้เลือกโฟลเดอร์ไม่ได้ ใช้ Chrome/Edge เพื่อแยกไฟล์รายคน)`;
+    show(`เสร็จ: ${items.length} ใบ อยู่ใน Google Drive โฟลเดอร์ "เกียรติบัตรรางวัล (ฉบับพิมพ์)" แยกตามระดับชั้นและรางวัล + ไฟล์รวมสำหรับพิมพ์ของแต่ละระดับ`, true);
+    if (folderUrl) box.appendChild(el('a', { cls: 'btn', text: 'เปิดโฟลเดอร์ใน Google Drive', attrs: { href: folderUrl, target: '_blank', rel: 'noopener', style: 'margin-top:8px;display:inline-block' } }));
   }
 
   async function saveNameShift(delta) {
@@ -503,10 +501,24 @@
   $('certLinks').addEventListener('click', () => guarded(showLinks));
   // Only while this tab is open; opening the tab renders it.
   const certsVisible = () => !$('tab-certs').classList.contains('hidden');
+  // Links to the four Drive folders (participation / award PDF / posters / templates), loaded once per page.
+  const FOLDER_LABEL = { participation: 'เกียรติบัตรผู้เข้าร่วม (ออนไลน์)', awardPdf: 'เกียรติบัตรรางวัล PDF', posters: 'ภาพประกาศรางวัล', templates: 'เทมเพลต (ห้ามแชร์)' };
+  let foldersShown = false;
+  async function showFolders() {
+    if (foldersShown) return;
+    foldersShown = true;
+    try {
+      const r = await Api.call('driveFolders', {}, { timeoutMs: 120000 });
+      $('driveFolders').replaceChildren(...Object.keys(FOLDER_LABEL).filter(k => r.folders[k]).map(k =>
+        el('a', { cls: 'btn ' + (k === 'templates' ? 'secondary' : ''), text: '📁 ' + FOLDER_LABEL[k], attrs: { href: r.folders[k].url, target: '_blank', rel: 'noopener', title: r.folders[k].name } })));
+    } catch (err) { foldersShown = false; $('driveFolders').textContent = Api.message(err); }
+  }
+
   // The first time the tab opens on this page load, the templates are pulled from Drive by themselves.
   let autoImported = false;
   const onShow = () => {
     renderSummary();
+    showFolders();
     if (!autoImported) {
       autoImported = true;
       guarded(importFromDrive, 'tplResult');

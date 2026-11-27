@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
   <title>แอดมิน — ระบบเกียรติบัตร 2569</title>
-  <link rel="stylesheet" href="css/app.css?v=20261127k">
+  <link rel="stylesheet" href="css/app.css?v=20261127n">
 </head>
 <body>
   <header class="top">
@@ -80,6 +80,14 @@
         <h2>รายชื่อจากตารางรับสมัคร (อ่านสด)</h2>
         <div id="rosterBanner"></div>
         <div class="stats" id="stats"></div>
+        <details id="schoolsBox" style="margin-top:12px">
+          <summary>รายชื่อโรงเรียน (จำนวนทีม · นักเรียน · ระดับ · ครูผู้ประสานงาน)</summary>
+          <div class="row" style="margin:8px 0"><button class="secondary small" id="schoolsCsv">ดาวน์โหลดเป็นไฟล์ Excel (CSV)</button></div>
+          <div style="overflow-x:auto"><table>
+            <thead><tr><th>#</th><th>โรงเรียน</th><th>ทีม</th><th>นักเรียน</th><th>ระดับ</th><th class="hide-sm">ครูผู้ประสานงาน</th></tr></thead>
+            <tbody id="schools"></tbody>
+          </table></div>
+        </details>
         <div id="problems" style="margin-top:12px"></div>
         <div style="overflow-x:auto; margin-top:12px">
           <table>
@@ -176,6 +184,9 @@
         <h2>เกียรติบัตรออนไลน์ผู้เข้าร่วมกิจกรรม</h2>
         <p class="muted">ได้รับ: นักเรียนที่บันทึกว่ามาแข่ง และทีมไม่ได้รางวัล · ทำได้หลังล็อกผล · ครูรับผ่าน QR บนหางบัตร</p>
         <div id="certSummary"></div>
+        <h3 style="margin-top:14px">โฟลเดอร์ใน Google Drive</h3>
+        <p class="muted">แยกกันเพื่อแชร์ทีละโฟลเดอร์ (คลิกขวาในไดรฟ์ → แชร์) · โฟลเดอร์เทมเพลตห้ามแชร์</p>
+        <div class="row" id="driveFolders"><span class="muted">กำลังโหลด…</span></div>
       </div>
       <div class="card">
         <h2>1. เทมเพลตและฟอนต์</h2>
@@ -209,10 +220,10 @@
       <div class="card">
         <h2>เกียรติบัตรรางวัล (ฉบับพิมพ์)</h2>
         <p class="muted">ใบละคน ทุกคนในทีมที่ได้รางวัล (ทีม 3 คน = 3 ใบ) ระบบเลือกเทมเพลตตามรางวัลเอง (จากข้อ 1 / Drive) ไม่ต้องเลือกไฟล์
-          · ส่งออกเป็น PDF แยกโฟลเดอร์ ระดับชั้น → รางวัล และไฟล์รวมสำหรับพิมพ์ของแต่ละระดับ (ใช้ Chrome/Edge)</p>
+          · ส่งออกเป็น PDF ขึ้น Google Drive ของระบบ (โฟลเดอร์ "เกียรติบัตรรางวัล (ฉบับพิมพ์)") แยก ระดับชั้น → รางวัล และไฟล์รวมสำหรับพิมพ์ของแต่ละระดับ</p>
         <div class="row">
           <button class="secondary" id="awardPreview">สร้างตัวอย่างเกียรติบัตรรางวัล</button>
-          <button id="awardExport">ส่งออก PDF เกียรติบัตรรางวัล</button>
+          <button id="awardExport">ส่งออก PDF ขึ้น Google Drive</button>
           <span class="muted" id="awardShift"></span>
           <button class="link" id="awardUp">ชื่อขึ้น ▲</button>
           <button class="link" id="awardDown">ชื่อลง ▼</button>
@@ -253,15 +264,15 @@
       </div>
     </section>
   </main>
-  <script src="config.js?v=20261127k"></script>
-  <script src="js/api.js?v=20261127k"></script>
-  <script src="js/common.js?v=20261127k"></script>
-  <script src="js/admin.js?v=20261127k"></script>
-  <script src="js/vendor/qrcode.js?v=20261127k"></script>
-  <script src="js/vendor/jsQR.js?v=20261127k"></script>
-  <script src="js/photo.js?v=20261127k"></script>
-  <script src="js/poster.js?v=20261127k"></script>
-  <script src="js/posters.js?v=20261127k"></script>
-  <script src="js/certs.js?v=20261127k"></script>
+  <script src="config.js?v=20261127n"></script>
+  <script src="js/api.js?v=20261127n"></script>
+  <script src="js/common.js?v=20261127n"></script>
+  <script src="js/admin.js?v=20261127n"></script>
+  <script src="js/vendor/qrcode.js?v=20261127n"></script>
+  <script src="js/vendor/jsQR.js?v=20261127n"></script>
+  <script src="js/photo.js?v=20261127n"></script>
+  <script src="js/poster.js?v=20261127n"></script>
+  <script src="js/posters.js?v=20261127n"></script>
+  <script src="js/certs.js?v=20261127n"></script>
 </body>
 </html>

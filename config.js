@@ -3,6 +3,6 @@
 window.APP_CONFIG = {
   API_URL: 'https://script.google.com/macros/s/AKfycbwXXW-wtupbxpbkLu-XA3ZQxH2IFaexPG7AmbeywBJquGW1GU6kAzfng7BW1ON3PTbUlQ/exec',
   EVENT_DATE: '2026-12-02',
-  REQUIRED_API_VERSION: '10',   // must match CODE_VERSION in apps-script/Code.gs
+  REQUIRED_API_VERSION: '12',   // must match CODE_VERSION in apps-script/Code.gs
   TITLE: 'การประกวดวาดภาพระดับเยาวชน 2569'
 };
