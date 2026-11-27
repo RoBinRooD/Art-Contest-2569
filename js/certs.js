@@ -288,22 +288,33 @@
   const safeName = s => String(s).replace(/[\\/:*?"<>|]+/g, '').replace(/\s+/g, ' ').trim();
 
   /** PDFs per person in level/award folders, plus one print-ready PDF per level. */
+  // Progress is shown on the button itself and in a banner, so a long export is never mistaken for a dead click.
   async function awardExport() {
-    const msg = $('awardMsg');
+    const btn = $('awardExport'), label = btn.textContent;
+    btn.disabled = true;
+    try { await awardExportRun(); } finally { btn.disabled = false; btn.textContent = label; }
+  }
+
+  async function awardExportRun() {
+    const box = $('awardMsg'), btn = $('awardExport');
+    const msg = { set textContent(t) { box.replaceChildren(el('div', { cls: 'banner ' + (/^เสร็จ/.test(t) ? 'ok' : 'warn'), text: t })); btn.textContent = /^เสร็จ/.test(t) ? 'ส่งออกเสร็จ' : 'กำลังส่งออก…'; } };
     if (!Store.locked()) throw new Error('ต้องล็อกผลรางวัลก่อนจึงส่งออกเกียรติบัตรรางวัลได้');
     if (!awardItems().length) throw new Error('ยังไม่มีผลรางวัล');
     // The folder picker must open straight from the click (the browser refuses it after a long wait),
     // so it comes before loading the templates.
     let dir = null;
     if (window.showDirectoryPicker) {
+      msg.textContent = 'เลือกโฟลเดอร์ แล้วกด "อนุญาต / แก้ไขไฟล์" ที่ Chrome ถาม…';
       try { dir = await window.showDirectoryPicker({ id: 'award-certificates', mode: 'readwrite', startIn: 'documents' }); }
       catch (e) {
         if (e.name === 'AbortError') { msg.textContent = 'ยกเลิกการเลือกโฟลเดอร์'; return; }
         msg.textContent = `เลือกโฟลเดอร์ไม่ได้ (${e.message || e.name}) — จะดาวน์โหลดเป็นไฟล์รวมของแต่ละระดับแทน`;
       }
     }
-    msg.textContent = 'กำลังโหลดเทมเพลตรางวัล…';
-    await loadAwardTemplates();
+    const folderName = dir && dir.name ? dir.name + "/" : "";
+    const where = dir ? `โฟลเดอร์ "${(dir && dir.name) || "ที่เลือก"}" · ` : '';
+    msg.textContent = where + 'กำลังโหลดเทมเพลตรางวัลจากระบบ (PDF อาจใช้เวลา 10–30 วินาที)…';
+    await Promise.race([loadAwardTemplates(), new Promise((_, no) => setTimeout(() => no(new Error('โหลดเทมเพลตรางวัลนานเกิน 2 นาที — ลองกดอีกครั้ง')), 120000))]);
     const items = awardItems();
     const noTpl = items.filter(i => !tplForAward(i.award));
     if (noTpl.length) throw new Error('ยังไม่มีเทมเพลตของรางวัล: ' + [...new Set(noTpl.map(i => AWARD_LABEL[i.award]))].join(', '));
@@ -317,7 +328,7 @@
     const byLevel = {};
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
-      msg.textContent = `กำลังสร้าง ${i + 1}/${items.length} ใบ…`;
+      msg.textContent = `${where}กำลังสร้าง ${i + 1}/${items.length} ใบ…`;
       const r = await render(it.name, it.team.school, 1, tplForAward(it.award), nameShift);
       const blob = await Photo.toBlob(r.canvas, 0.92);
       const t = awardTplFor(it.award);
@@ -331,7 +342,7 @@
       msg.textContent = `กำลังรวมไฟล์สำหรับพิมพ์ ${lv}…`;
       await write(`เกียรติบัตรรางวัล/${lv}/รวมสำหรับพิมพ์_${lv}.pdf`, pdfFromJpegs(list));
     }
-    msg.textContent = dir ? `เสร็จ: ${items.length} ใบ ในโฟลเดอร์ "เกียรติบัตรรางวัล" แยกตามระดับชั้นและรางวัล + ไฟล์รวมสำหรับพิมพ์ของแต่ละระดับ`
+    msg.textContent = dir ? `เสร็จ: ${items.length} ใบ ในโฟลเดอร์ "${folderName}เกียรติบัตรรางวัล" แยกตามระดับชั้นและรางวัล + ไฟล์รวมสำหรับพิมพ์ของแต่ละระดับ`
       : `ดาวน์โหลดไฟล์รวมสำหรับพิมพ์แล้ว ${Object.keys(byLevel).length} ไฟล์ (เบราว์เซอร์นี้เลือกโฟลเดอร์ไม่ได้ ใช้ Chrome/Edge เพื่อแยกไฟล์รายคน)`;
   }
 
