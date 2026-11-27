@@ -29,23 +29,35 @@
     });
   }
 
-  async function render(name, scale = 1) {
+  // Two centred lines in the name area: the student's name, and under it the school (smaller).
+  const LAYOUT = 'name+school-v1';   // part of every certificate's hash: a layout change re-renders them all
+  const fitFont = (ctx, text, maxW, from, to, step, weight) => {
+    let px = from;
+    for (; px > to; px -= step) { ctx.font = `${weight} ${px}px ${Poster.font}, sans-serif`; if (ctx.measureText(text).width <= maxW) break; }
+    ctx.font = `${weight} ${px}px ${Poster.font}, sans-serif`;
+    return px;
+  };
+
+  async function render(name, school, scale = 1, img = template, shift = 0) {
     await Poster.loadFonts();
     const c = document.createElement('canvas');
-    c.width = Math.round(template.naturalWidth * scale); c.height = Math.round(template.naturalHeight * scale);
+    c.width = Math.round(img.naturalWidth * scale); c.height = Math.round(img.naturalHeight * scale);
     const ctx = c.getContext('2d');
     ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(template, 0, 0, c.width, c.height);
-    const sx = c.width / 2339, maxW = (NAME_BOX.x1 - NAME_BOX.x0) * sx;
-    let px = 120 * sx;
-    const font = p => `600 ${p}px ${Poster.font}, sans-serif`;
-    for (; px > 60 * sx; px -= 2 * sx) { ctx.font = font(px); if (ctx.measureText(name).width <= maxW) break; }
-    ctx.font = font(px);
+    ctx.drawImage(img, 0, 0, c.width, c.height);
+    const sx = c.width / 2339, sy = c.height / 1654, maxW = (NAME_BOX.x1 - NAME_BOX.x0) * sx;
+    const mid = ((NAME_BOX.y0 + NAME_BOX.y1) / 2) * sy + shift * c.height;
     ctx.fillStyle = '#000';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(name, c.width / 2, ((NAME_BOX.y0 + NAME_BOX.y1) / 2) * sx);
-    return { canvas: c, small: px < 80 * sx };
+    const px = fitFont(ctx, name, maxW, 112 * sx, 56 * sx, 2 * sx, 600);
+    ctx.fillText(name, c.width / 2, mid - 50 * sy);
+    let spx = 0;
+    if (school) {
+      spx = fitFont(ctx, school, maxW, 66 * sx, 38 * sx, 2 * sx, 500);
+      ctx.fillText(school, c.width / 2, mid + 62 * sy);
+    }
+    return { canvas: c, small: px < 76 * sx || (school && spx < 46 * sx) };
   }
 
   function renderSummary() {
@@ -137,6 +149,138 @@
         el('pre', { attrs: { style: 'max-height:240px;overflow:auto;white-space:pre-wrap;font-size:12px' }, text: n.text }))));
   }
 
+  // ---------------------------------------------------------------- award certificates (printed)
+  // Same name position as the participation certificate; a small up/down shift (setting:awardNameShift, share of
+  // the height) fixes a template whose name line sits elsewhere.
+  let nameShift = 0;
+  const AWARD_KINDS = ['award-1', 'award-2', 'award-3', 'award-4', 'award'];
+  const awardTpl = {};   // kind -> {img, sha}
+
+  async function loadAwardTemplates() {
+    for (const kind of AWARD_KINDS) {
+      const stored = Store.val('template:' + kind);
+      if (!stored) { delete awardTpl[kind]; continue; }
+      if (awardTpl[kind] && awardTpl[kind].sha === stored.sha) continue;
+      const r = await Api.call('getTemplate', { kind }, { timeoutMs: 120000 });
+      awardTpl[kind] = { img: await Photo.loadFile(Photo.base64ToBlob(r.data, r.mime)), sha: r.sha };
+    }
+  }
+  const tplForAward = a => (awardTpl['award-' + a] || awardTpl.award || {}).img || null;
+
+  /** Everyone who gets an award certificate: members of winning teams who were checked in as present. */
+  function awardItems() {
+    const out = [];
+    App.LEVEL_ORDER.forEach((level, li) => Store.awardRows(level).filter(r => r.team).forEach(r => {
+      const t = Store.team(r.team);
+      if (!t) return;
+      const present = new Set(App.presentMembers(t).map(m => m.sid));
+      t.members.forEach(m => out.push({ level, li, award: r.award, order: r.order, team: t, name: m.printName, present: present.has(m.sid) }));
+    }));
+    return out.sort((a, b) => a.li - b.li || a.award - b.award || a.order - b.order);
+  }
+
+  async function awardPreview() {
+    const msg = $('awardMsg'), grid = $('awardGrid');
+    grid.querySelectorAll('img').forEach(i => URL.revokeObjectURL(i.src));
+    grid.replaceChildren();
+    msg.textContent = 'กำลังโหลดเทมเพลตรางวัล…';
+    await loadAwardTemplates();
+    const all = awardItems(), items = all.filter(i => i.present);
+    const missingTpl = [...new Set(items.filter(i => !tplForAward(i.award)).map(i => AWARD_LABEL[i.award]))];
+    let done = 0;
+    for (const it of items) {
+      const img = tplForAward(it.award);
+      const cell = el('div', { cls: 'cert-cell' });
+      if (img) {
+        const r = await render(it.name, it.team.school, 0.22, img, nameShift);
+        const pic = el('img', { cls: 'cert-thumb', attrs: { alt: it.name } });
+        pic.src = URL.createObjectURL(await Photo.toBlob(r.canvas, 0.8));
+        r.canvas.width = r.canvas.height = 0;
+        cell.append(pic);
+        if (r.small) cell.append(tag('ชื่อหรือโรงเรียนยาว ตัวอักษรถูกย่อ', 'warn'));
+      } else cell.append(tag('ไม่มีเทมเพลตของรางวัลนี้', 'bad'));
+      cell.append(el('div', { cls: 'muted', text: `${App.LEVEL_SHORT[it.level]} · ${AWARD_LABEL[it.award]} · ${it.team.short} · ${it.team.school}` }));
+      grid.appendChild(cell);
+      if (++done % 10 === 0) msg.textContent = `กำลังสร้าง ${done}/${items.length} ใบ…`;
+    }
+    const absent = all.length - items.length;
+    msg.textContent = `${items.length} ใบ (ทีมที่ได้รางวัล เฉพาะคนที่มาแข่ง${absent ? ` · ไม่ได้มา ${absent} คน ไม่ทำให้` : ''})` +
+      (missingTpl.length ? ` · ⚠ ไม่มีเทมเพลต: ${missingTpl.join(', ')} — ดึงเทมเพลตจาก Drive ในข้อ 1` : ' · ตรวจชื่อและตำแหน่งทุกใบ');
+  }
+
+  // Minimal PDF writer: one A4-landscape page per JPEG, the image filling the page (templates are A4 proportion).
+  function pdfFromJpegs(jpegs) {
+    const enc = new TextEncoder(), parts = [], offsets = [];
+    let size = 0;
+    const push = x => { const b = typeof x === 'string' ? enc.encode(x) : x; parts.push(b); size += b.length; };
+    const obj = (n, body) => { offsets[n] = size; push(`${n} 0 obj\n`); body(); push('\nendobj\n'); };
+    const W = 841.89, H = 595.28, n = jpegs.length;
+    push('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n');
+    obj(1, () => push('<< /Type /Catalog /Pages 2 0 R >>'));
+    obj(2, () => push(`<< /Type /Pages /Count ${n} /Kids [${jpegs.map((_, i) => `${3 + i * 3} 0 R`).join(' ')}] >>`));
+    jpegs.forEach((j, i) => {
+      const page = 3 + i * 3, content = page + 1, image = page + 2;
+      const draw = `q ${W} 0 0 ${H} 0 0 cm /Im0 Do Q`;
+      obj(page, () => push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${W} ${H}] /Resources << /XObject << /Im0 ${image} 0 R >> >> /Contents ${content} 0 R >>`));
+      obj(content, () => { push(`<< /Length ${draw.length} >>\nstream\n`); push(draw); push('\nendstream'); });
+      obj(image, () => { push(`<< /Type /XObject /Subtype /Image /Width ${j.w} /Height ${j.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${j.bytes.length} >>\nstream\n`); push(j.bytes); push('\nendstream'); });
+    });
+    const xref = size, count = 3 + n * 3;
+    push(`xref\n0 ${count}\n0000000000 65535 f \n`);
+    for (let i = 1; i < count; i++) push(String(offsets[i]).padStart(10, '0') + ' 00000 n \n');
+    push(`trailer\n<< /Size ${count} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
+    return new Blob(parts, { type: 'application/pdf' });
+  }
+
+  const safeName = s => String(s).replace(/[\\/:*?"<>|]+/g, '').replace(/\s+/g, ' ').trim();
+
+  /** PDFs per person in level/award folders, plus one print-ready PDF per level. */
+  async function awardExport() {
+    const msg = $('awardMsg');
+    if (!Store.locked()) throw new Error('ต้องล็อกผลรางวัลก่อนจึงส่งออกเกียรติบัตรรางวัลได้');
+    await loadAwardTemplates();
+    const items = awardItems().filter(i => i.present);
+    const noTpl = items.filter(i => !tplForAward(i.award));
+    if (noTpl.length) throw new Error('ยังไม่มีเทมเพลตของรางวัล: ' + [...new Set(noTpl.map(i => AWARD_LABEL[i.award]))].join(', '));
+    let dir = null;
+    if (window.showDirectoryPicker) {
+      try { dir = await window.showDirectoryPicker({ mode: 'readwrite' }); } catch (e) { if (e.name === 'AbortError') return; }
+    }
+    const write = async (path, blob) => {
+      if (!dir) { const a = el('a', { attrs: { href: URL.createObjectURL(blob), download: path.replace(/\//g, '_') } }); document.body.appendChild(a); a.click(); a.remove(); await new Promise(r => setTimeout(r, 400)); return; }
+      const ps = path.split('/');
+      let d = dir;
+      for (const p of ps.slice(0, -1)) d = await d.getDirectoryHandle(p, { create: true });
+      const w = await (await d.getFileHandle(ps[ps.length - 1], { create: true })).createWritable(); await w.write(blob); await w.close();
+    };
+    const byLevel = {};
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      msg.textContent = `กำลังสร้าง ${i + 1}/${items.length} ใบ…`;
+      const r = await render(it.name, it.team.school, 1, tplForAward(it.award), nameShift);
+      const blob = await Photo.toBlob(r.canvas, 0.92);
+      const jpeg = { bytes: new Uint8Array(await blob.arrayBuffer()), w: r.canvas.width, h: r.canvas.height };
+      r.canvas.width = r.canvas.height = 0;
+      const lv = `${it.li + 1}_${App.LEVEL_SHORT[it.level]}`, aw = `${it.award}_${AWARD_LABEL[it.award]}`;
+      if (dir) await write(`เกียรติบัตรรางวัล/${lv}/${aw}/${safeName(it.team.short + '_' + it.name)}.pdf`, pdfFromJpegs([jpeg]));
+      (byLevel[lv] = byLevel[lv] || []).push(jpeg);
+    }
+    for (const [lv, list] of Object.entries(byLevel)) {
+      msg.textContent = `กำลังรวมไฟล์สำหรับพิมพ์ ${lv}…`;
+      await write(`เกียรติบัตรรางวัล/${lv}/รวมสำหรับพิมพ์_${lv}.pdf`, pdfFromJpegs(list));
+    }
+    msg.textContent = dir ? `เสร็จ: ${items.length} ใบ ในโฟลเดอร์ "เกียรติบัตรรางวัล" แยกตามระดับชั้นและรางวัล + ไฟล์รวมสำหรับพิมพ์ของแต่ละระดับ`
+      : `ดาวน์โหลดไฟล์รวมสำหรับพิมพ์แล้ว ${Object.keys(byLevel).length} ไฟล์ (เบราว์เซอร์นี้เลือกโฟลเดอร์ไม่ได้ ใช้ Chrome/Edge เพื่อแยกไฟล์รายคน)`;
+  }
+
+  async function saveNameShift(delta) {
+    nameShift = Math.round((nameShift + delta) * 1000) / 1000;
+    const cur = Store.state['setting:awardNameShift'];
+    await Store.set('setting:awardNameShift', nameShift, cur ? cur.v : 0);
+    $('awardShift').textContent = `ตำแหน่งชื่อ: ${nameShift > 0 ? 'ลง' : nameShift < 0 ? 'ขึ้น' : 'ตามเกียรติบัตรผู้เข้าร่วม'} ${nameShift ? Math.abs(nameShift * 100).toFixed(1) + '%' : ''}`;
+    await awardPreview();
+  }
+
   async function preview() {
     await ensureTemplate();
     if (!template) { $('certPreviewMsg').textContent = 'ยังไม่มีเทมเพลต — อัปโหลดครั้งแรกในข้อ 1'; return; }
@@ -149,12 +293,12 @@
     // browser's memory on a big contest.
     let done = 0;
     for (const it of items) {
-      const r = await render(it.name, 0.22);
+      const r = await render(it.name, it.team.school, 0.22);
       const img = el('img', { cls: 'cert-thumb', attrs: { alt: it.name, loading: 'lazy' } });
       img.src = URL.createObjectURL(await Photo.toBlob(r.canvas, 0.8));
       r.canvas.width = r.canvas.height = 0;
       grid.appendChild(el('div', { cls: 'cert-cell' }, img,
-        el('div', { cls: 'muted', text: `${it.team.short} · ${it.team.school}` }), r.small ? tag('ชื่อยาว ตัวอักษรถูกย่อ', 'warn') : null));
+        el('div', { cls: 'muted', text: `${it.team.short} · ${it.team.school}` }), r.small ? tag('ชื่อหรือโรงเรียนยาว ตัวอักษรถูกย่อ', 'warn') : null));
       if (++done % 20 === 0) $('certPreviewMsg').textContent = `กำลังสร้าง ${done}/${items.length} ใบ…`;
     }
     $('certPreviewMsg').textContent = `${items.length} ใบ · ตรวจชื่อทุกใบก่อนเผยแพร่`;
@@ -164,7 +308,7 @@
   const TRANSIENT = ['busy', 'timeout', 'network', 'server_error', 'not_json'];
 
   async function publishOne(it, hash) {
-    const r = await render(it.name, 1);
+    const r = await render(it.name, it.team.school, 1);
     const data = await Photo.blobToBase64(await Photo.toBlob(r.canvas, 0.88));
     r.canvas.width = r.canvas.height = 0;
     for (let attempt = 1; ; attempt++) {
@@ -192,7 +336,7 @@
       const todo = [];
       let sent = 0, same = 0;
       items.forEach(it => {
-        const hash = fnv(`${it.name}|${Poster.font}|${templateSig}`);
+        const hash = fnv(`${it.name}|${it.team.school}|${LAYOUT}|${Poster.font}|${templateSig}`);
         const cur = Store.val('cert:' + it.sid);
         if (cur && cur.hash === hash) same++; else todo.push({ it, hash });
       });
@@ -262,6 +406,11 @@
 
   $('certTemplate').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f) guarded(() => loadTemplate(f), 'certTemplateStatus'); });
   $('certPreview').addEventListener('click', () => guarded(preview, 'certPreviewMsg'));
+  $('awardPreview').addEventListener('click', () => guarded(awardPreview, 'awardMsg'));
+  $('awardExport').addEventListener('click', () => guarded(awardExport, 'awardMsg'));
+  $('awardUp').addEventListener('click', () => guarded(() => saveNameShift(-0.01), 'awardMsg'));
+  $('awardDown').addEventListener('click', () => guarded(() => saveNameShift(0.01), 'awardMsg'));
+  Store.on(() => { const v = Store.val('setting:awardNameShift'); nameShift = typeof v === 'number' ? v : 0; });
   $('tplImport').addEventListener('click', () => guarded(importFromDrive, 'tplResult'));
   $('certPublish').addEventListener('click', () => guarded(publish, 'certPublishMsg'));
   $('certOpen').addEventListener('click', () => guarded(toggleOpen, 'certPublishMsg'));
