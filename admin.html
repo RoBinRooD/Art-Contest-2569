@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
   <title>แอดมิน — ระบบเกียรติบัตร 2569</title>
-  <link rel="stylesheet" href="css/app.css?v=20261127n">
+  <link rel="stylesheet" href="css/app.css?v=20261127p">
 </head>
 <body>
   <header class="top">
@@ -108,6 +108,16 @@
         </div>
         <div class="stats" id="ciStats"></div>
         <div id="ciList" style="margin-top:12px"></div>
+      </div>
+      <div class="card">
+        <h2>ให้นักศึกษาช่วยเช็กชื่อผ่านมือถือ</h2>
+        <p class="muted">นักศึกษาสแกน QR แล้วบันทึกได้เฉพาะ มาครบ / มาไม่ครบ / ไม่มา (แก้ผลรางวัลหรือส่วนอื่นไม่ได้) ทุกการบันทึกระบุชื่อผู้ช่วย
+          หน้านี้อัปเดตเองทุก 30 วินาที · ถ้า QR หลุดไปถึงคนอื่น กด "เปลี่ยนคีย์" ลิงก์เดิมจะใช้ไม่ได้ทันที</p>
+        <div class="row">
+          <button class="secondary" id="staffQrBtn">แสดง QR เช็กชื่อ (นักศึกษา)</button>
+          <button class="link" id="staffNewKey">เปลี่ยนคีย์ (ยกเลิกลิงก์เดิม)</button>
+        </div>
+        <div id="staffQr" style="margin-top:8px"></div>
       </div>
     </section>
 
@@ -220,7 +230,7 @@
       <div class="card">
         <h2>เกียรติบัตรรางวัล (ฉบับพิมพ์)</h2>
         <p class="muted">ใบละคน ทุกคนในทีมที่ได้รางวัล (ทีม 3 คน = 3 ใบ) ระบบเลือกเทมเพลตตามรางวัลเอง (จากข้อ 1 / Drive) ไม่ต้องเลือกไฟล์
-          · ส่งออกเป็น PDF ขึ้น Google Drive ของระบบ (โฟลเดอร์ "เกียรติบัตรรางวัล (ฉบับพิมพ์)") แยก ระดับชั้น → รางวัล และไฟล์รวมสำหรับพิมพ์ของแต่ละระดับ</p>
+          · ส่งออกเป็น PDF ขึ้น Google Drive โฟลเดอร์ "เกียรติบัตรรางวัล PDF (ฉบับพิมพ์)" โฟลเดอร์เดียว ชื่อไฟล์เรียงตามลำดับพิมพ์ (ระดับ → รางวัล → ทีม) และไฟล์รวมพิมพ์ของแต่ละระดับ</p>
         <div class="row">
           <button class="secondary" id="awardPreview">สร้างตัวอย่างเกียรติบัตรรางวัล</button>
           <button id="awardExport">ส่งออก PDF ขึ้น Google Drive</button>
@@ -264,15 +274,15 @@
       </div>
     </section>
   </main>
-  <script src="config.js?v=20261127n"></script>
-  <script src="js/api.js?v=20261127n"></script>
-  <script src="js/common.js?v=20261127n"></script>
-  <script src="js/admin.js?v=20261127n"></script>
-  <script src="js/vendor/qrcode.js?v=20261127n"></script>
-  <script src="js/vendor/jsQR.js?v=20261127n"></script>
-  <script src="js/photo.js?v=20261127n"></script>
-  <script src="js/poster.js?v=20261127n"></script>
-  <script src="js/posters.js?v=20261127n"></script>
-  <script src="js/certs.js?v=20261127n"></script>
+  <script src="config.js?v=20261127p"></script>
+  <script src="js/api.js?v=20261127p"></script>
+  <script src="js/common.js?v=20261127p"></script>
+  <script src="js/admin.js?v=20261127p"></script>
+  <script src="js/vendor/qrcode.js?v=20261127p"></script>
+  <script src="js/vendor/jsQR.js?v=20261127p"></script>
+  <script src="js/photo.js?v=20261127p"></script>
+  <script src="js/poster.js?v=20261127p"></script>
+  <script src="js/posters.js?v=20261127p"></script>
+  <script src="js/certs.js?v=20261127p"></script>
 </body>
 </html>

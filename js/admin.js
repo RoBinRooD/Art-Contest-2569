@@ -440,6 +440,28 @@
   $('actorName').value = App.actor() === 'admin' ? '' : App.actor();
   $('saveConn').addEventListener('click', saveConnection);
   $('runTest').addEventListener('click', runTest);
+
+  // ---- check-in by student helpers: QR to checkin.html with the staff key; this tab refreshes itself meanwhile
+  async function showStaffQr(renew) {
+    if (renew && !confirm('เปลี่ยนคีย์เช็กชื่อ? ลิงก์/QR ที่แจกไปแล้วจะใช้ไม่ได้ ต้องให้นักศึกษาสแกนใหม่')) return;
+    const r = await Api.call(renew ? 'staffNewKey' : 'staffLink', {}, { retries: 0 });
+    const base = location.origin + location.pathname.replace(/[^/]*$/, '');
+    const url = `${base}checkin.html?openExternalBrowser=1#s=${r.staffKey}`;
+    const qr = qrcode(0, 'M'); qr.addData(url); qr.make();
+    const holder = el('div', { cls: 'qrbox' });
+    holder.innerHTML = qr.createSvgTag({ cellSize: 6, margin: 4 });   // SVG from the QR library, no sheet data
+    $('staffQr').replaceChildren(
+      el('div', { cls: 'muted', text: 'ให้นักศึกษาสแกนด้วยกล้องมือถือ (ไม่ใช่ใน LINE) · ใช้ได้เฉพาะเช็กชื่อ' }), holder,
+      el('div', { cls: 'row' },
+        el('button', { cls: 'link', text: 'คัดลอกลิงก์', on: { click: async () => { await navigator.clipboard.writeText(url); flash('คัดลอกลิงก์เช็กชื่อแล้ว', 'ok'); } } }),
+        el('button', { cls: 'link', text: 'ซ่อน QR', on: { click: () => $('staffQr').replaceChildren() } })));
+    if (renew) flash('เปลี่ยนคีย์แล้ว ลิงก์เดิมใช้ไม่ได้', 'ok');
+  }
+  $('staffQrBtn').addEventListener('click', () => guarded(() => showStaffQr(false)));
+  $('staffNewKey').addEventListener('click', () => guarded(() => showStaffQr(true)));
+  setInterval(() => {
+    if (currentTab === 'checkin' && !editing && !document.hidden && Api.hasKey()) Store.loadState().catch(() => {});
+  }, 30000);
   $('schoolsCsv').addEventListener('click', downloadSchoolsCsv);
   $('refresh').addEventListener('click', refresh);
   let searchTimer = 0;

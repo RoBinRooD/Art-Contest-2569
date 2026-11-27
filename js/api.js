@@ -18,10 +18,10 @@
 
   function apiUrl() { return safeGet(URL_STORE) || (window.APP_CONFIG && window.APP_CONFIG.API_URL) || ''; }
 
-  async function call(action, payload = {}, { retries = 2, timeoutMs = 45000, noKey = false } = {}) {
+  async function call(action, payload = {}, { retries = 2, timeoutMs = 45000, noKey = false, key = null } = {}) {
     const url = apiUrl();
     if (!url) throw new ApiError('no_api_url');
-    const body = JSON.stringify({ action, key: noKey ? '' : safeGet(KEY_STORE), opId: crypto.randomUUID(), ...payload });
+    const body = JSON.stringify({ action, key: noKey ? '' : (key != null ? key : safeGet(KEY_STORE)), opId: crypto.randomUUID(), ...payload });
     let lastErr;
     for (let attempt = 0; attempt <= retries; attempt++) {
       const ctrl = new AbortController();

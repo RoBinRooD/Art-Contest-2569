@@ -6,6 +6,7 @@
 - `print.html` — ชุดเอกสารพิมพ์ (`print.html?demo=1` = ข้อมูลตัวอย่าง)
 - `cert.html` — หน้ารับเกียรติบัตรผู้เข้าร่วม (เปิดจาก QR บนหางบัตร หรือรหัสทีม + เลข 4 ตัวท้ายเบอร์ครู)
 - `upload.html` — หน้าส่งรูปผลงานจากมือถือ (เปิดจาก QR ในหน้าแอดมิน)
+- `checkin.html` — หน้าเช็กชื่อผู้เข้าแข่งขันสำหรับนักศึกษาผู้ช่วย (เปิดจาก QR ในแท็บเช็กอิน บันทึกได้เฉพาะการมาแข่ง)
 - `js/vendor/qrcode.js` — qrcode-generator 1.4.4 © Kazuhiko Arase, MIT License
 - `js/vendor/jsQR.js` — jsQR 1.4.0, Apache License 2.0
 - `js/vendor/pdfjs/` — PDF.js (pdfjs-dist) 3.11.174 © Mozilla, Apache License 2.0 (`LICENSE`) ใช้อ่านเทมเพลตเกียรติบัตรรางวัลที่เป็น PDF

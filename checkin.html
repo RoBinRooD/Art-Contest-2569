@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>เช็กชื่อผู้เข้าแข่งขัน — ระบบเกียรติบัตร 2569</title>
+  <link rel="stylesheet" href="css/app.css?v=20261127p">
+  <style>
+    main { padding-bottom: 80px; }
+    .bar { position: sticky; top: 0; z-index: 3; background: var(--bg); padding: 8px 0; }
+    .bar input { width: 100%; font-size: 18px; }
+    .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .chips button { padding: 6px 12px; font-size: 15px; }
+    .chips button.active { background: var(--accent); color: #fff; }
+    .team { border: 1px solid var(--border); border-left: 6px solid var(--border); border-radius: 10px; padding: 10px 12px; margin: 10px 0; background: var(--card, transparent); }
+    .team.present { border-left-color: var(--ok); }
+    .team.partial { border-left-color: var(--warn); }
+    .team.absent { border-left-color: var(--bad); }
+    .team .head { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+    .team .code { font-size: 26px; font-weight: 700; letter-spacing: 1px; font-family: Consolas, monospace; }
+    .team .school { font-weight: 600; }
+    .team .who { font-size: 13px; }
+    .members { margin: 6px 0 2px 0; font-size: 15px; }
+    .members label { display: flex; gap: 8px; align-items: center; padding: 6px 0; font-size: 17px; }
+    .members input { width: 22px; height: 22px; }
+    .members .struck { text-decoration: line-through; opacity: .6; }
+    .acts { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 8px; }
+    .acts button { padding: 12px 4px; font-size: 16px; }
+    .acts .ok { background: var(--ok); color: #fff; }
+    .acts .warn { background: var(--warn); color: #fff; }
+    .acts .bad { background: var(--bad); color: #fff; }
+    .toast { position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 9; }
+  </style>
+</head>
+<body>
+  <header class="top"><h1>เช็กชื่อผู้เข้าแข่งขัน</h1></header>
+  <main>
+    <div id="noKey" class="card hidden">
+      <div class="banner bad">ลิงก์นี้ไม่มีคีย์เช็กชื่อ ให้สแกน QR "เช็กชื่อ (นักศึกษา)" จากหน้าแอดมินอีกครั้ง</div>
+    </div>
+    <section id="who" class="card hidden">
+      <h2>ชื่อผู้ช่วยเช็กชื่อ</h2>
+      <p class="muted">ใส่ชื่อเล่นหรือชื่อจริง ระบบบันทึกไว้ว่าใครเช็กทีมไหน</p>
+      <div class="row"><input type="text" id="whoName" placeholder="เช่น นศ.มายด์" autocomplete="off"><button id="whoSave">เริ่มเช็กชื่อ</button></div>
+    </section>
+    <section id="main" class="hidden">
+      <div class="bar">
+        <input type="search" id="q" placeholder="ค้นรหัสทีม 3 ตัว หรือชื่อโรงเรียน" autocomplete="off">
+        <div class="chips" id="levels"></div>
+        <div class="chips" id="views"></div>
+      </div>
+      <div class="stats" id="stats"></div>
+      <div class="muted" id="fresh" style="margin-top:6px"></div>
+      <div id="list"></div>
+    </section>
+  </main>
+  <div class="toast" id="toast"></div>
+  <script src="config.js?v=20261127p"></script>
+  <script src="js/api.js?v=20261127p"></script>
+  <script src="js/common.js?v=20261127p"></script>
+  <script src="js/checkin.js?v=20261127p"></script>
+</body>
+</html>

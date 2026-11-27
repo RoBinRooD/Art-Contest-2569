@@ -131,7 +131,12 @@
     // empty = the saved link, else the folder set in the Apps Script (CONFIG.TEMPLATE_FOLDER_ID)
     const link = $('tplFolder').value.trim();
     box.textContent = 'กำลังดึงเทมเพลตจาก Google Drive…';
-    const r = await Api.call('importTemplates', { folder: link, actor: App.actor() }, { retries: 0, timeoutMs: 300000 });
+    let r;
+    try { r = await Api.call('importTemplates', { folder: link, actor: App.actor() }, { retries: 0, timeoutMs: 300000 }); }
+    catch (err) {
+      if (err.code === 'not_found') throw new Error('ไม่พบโฟลเดอร์เทมเพลตใน Google Drive (ถูกย้าย/ลบ หรือบัญชี Apps Script เปิดไม่ได้) — ใช้เทมเพลตที่เก็บในระบบไว้แล้วแทน');
+      throw err;
+    }
     const cur = Store.state['setting:templateFolder'];
     if (link && Store.val('setting:templateFolder') !== link) await Store.set('setting:templateFolder', link, cur ? cur.v : 0);
     $('tplFolder').value = '';
@@ -332,15 +337,17 @@
       const t = awardTplFor(it.award);
       const jpeg = { bytes: new Uint8Array(await blob.arrayBuffer()), w: r.canvas.width, h: r.canvas.height, pw: t.pageW, ph: t.pageH };
       r.canvas.width = r.canvas.height = 0;
-      const lv = `${it.li + 1}_${App.LEVEL_SHORT[it.level]}`, aw = `${it.award}_${AWARD_LABEL[it.award]}`;
-      folderUrl = (await uploadPdf([lv, aw], `${safeName(it.team.short + '_' + it.name)}.pdf`, pdfFromJpegs([jpeg]))).folderUrl || folderUrl;
+      const lv = `${it.li + 1}_${App.LEVEL_SHORT[it.level]}`;
+      // one flat folder, named so the files sort in print order: level → award → team → person
+      const seq = String(i + 1).padStart(3, '0');
+      folderUrl = (await uploadPdf([], `${seq}_${App.LEVEL_SHORT[it.level]}_${AWARD_LABEL[it.award]}_${safeName(it.team.short + '_' + it.name)}.pdf`, pdfFromJpegs([jpeg]))).folderUrl || folderUrl;
       (byLevel[lv] = byLevel[lv] || []).push(jpeg);
     }
     for (const [lv, list] of Object.entries(byLevel)) {
       show(`กำลังรวมไฟล์สำหรับพิมพ์ ${lv} (${list.length} หน้า) และอัปโหลด…`);
-      folderUrl = (await uploadPdf([lv], `รวมสำหรับพิมพ์_${lv}.pdf`, pdfFromJpegs(list))).folderUrl || folderUrl;
+      folderUrl = (await uploadPdf([], `000_รวมพิมพ์_${lv}.pdf`, pdfFromJpegs(list))).folderUrl || folderUrl;
     }
-    show(`เสร็จ: ${items.length} ใบ อยู่ใน Google Drive โฟลเดอร์ "เกียรติบัตรรางวัล (ฉบับพิมพ์)" แยกตามระดับชั้นและรางวัล + ไฟล์รวมสำหรับพิมพ์ของแต่ละระดับ`, true);
+    show(`เสร็จ: ${items.length} ใบ อยู่ในโฟลเดอร์ Drive "เกียรติบัตรรางวัล PDF (ฉบับพิมพ์)" โฟลเดอร์เดียว เรียงตามลำดับพิมพ์ + ไฟล์รวมพิมพ์ของแต่ละระดับ (000_รวมพิมพ์_…)`, true);
     if (folderUrl) box.appendChild(el('a', { cls: 'btn', text: 'เปิดโฟลเดอร์ใน Google Drive', attrs: { href: folderUrl, target: '_blank', rel: 'noopener', style: 'margin-top:8px;display:inline-block' } }));
   }
 
@@ -519,12 +526,14 @@
   const onShow = () => {
     renderSummary();
     showFolders();
+    const load = () => ensureTemplate().catch(err => { $('certTemplateStatus').textContent = Api.message(err); });
     if (!autoImported) {
       autoImported = true;
-      guarded(importFromDrive, 'tplResult');
+      // whatever happens with Drive, the templates already stored in the system are still loaded
+      guarded(importFromDrive, 'tplResult').finally(load);
       return;
     }
-    ensureTemplate().catch(err => { $('certTemplateStatus').textContent = Api.message(err); });
+    load();
   };
   Store.on(() => { if (certsVisible()) onShow(); });
   const tabBtn = document.querySelector('#tabs button[data-tab="certs"]');
