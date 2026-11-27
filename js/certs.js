@@ -131,7 +131,12 @@
     // empty = the saved link, else the folder set in the Apps Script (CONFIG.TEMPLATE_FOLDER_ID)
     const link = $('tplFolder').value.trim();
     box.textContent = 'กำลังดึงเทมเพลตจาก Google Drive…';
-    const r = await Api.call('importTemplates', { folder: link, actor: App.actor() }, { retries: 0, timeoutMs: 300000 });
+    let r;
+    try { r = await Api.call('importTemplates', { folder: link, actor: App.actor() }, { retries: 0, timeoutMs: 300000 }); }
+    catch (err) {
+      if (err.code === 'not_found') throw new Error('ไม่พบโฟลเดอร์เทมเพลตใน Google Drive (ถูกย้าย/ลบ หรือบัญชี Apps Script เปิดไม่ได้) — ใช้เทมเพลตที่เก็บในระบบไว้แล้วแทน');
+      throw err;
+    }
     const cur = Store.state['setting:templateFolder'];
     if (link && Store.val('setting:templateFolder') !== link) await Store.set('setting:templateFolder', link, cur ? cur.v : 0);
     $('tplFolder').value = '';
@@ -519,12 +524,14 @@
   const onShow = () => {
     renderSummary();
     showFolders();
+    const load = () => ensureTemplate().catch(err => { $('certTemplateStatus').textContent = Api.message(err); });
     if (!autoImported) {
       autoImported = true;
-      guarded(importFromDrive, 'tplResult');
+      // whatever happens with Drive, the templates already stored in the system are still loaded
+      guarded(importFromDrive, 'tplResult').finally(load);
       return;
     }
-    ensureTemplate().catch(err => { $('certTemplateStatus').textContent = Api.message(err); });
+    load();
   };
   Store.on(() => { if (certsVisible()) onShow(); });
   const tabBtn = document.querySelector('#tabs button[data-tab="certs"]');
