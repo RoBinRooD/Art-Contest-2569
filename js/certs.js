@@ -1,5 +1,6 @@
 // Admin tab "เกียรติบัตร": render participation certificates on this computer, review them, publish to Drive,
-// and open the public download page. The blank template never leaves this computer except as finished certificates.
+// and open the public download page. The blank template is kept in the system's private Drive folder (admin only)
+// and loaded automatically on any admin computer; it never appears on the public web.
 (function () {
   const { el, tag, LEVEL_SHORT, AWARD_LABEL, Store } = App;
   const $ = id => document.getElementById(id);
@@ -66,17 +67,50 @@
     $('certPublish').disabled = !Store.locked() || !template;
   }
 
-  async function loadTemplate(file) {
-    const img = await Photo.loadFile(file);
-    template = img;
-    templateSig = `${file.name}|${file.size}|${img.naturalWidth}x${img.naturalHeight}`;
+  function showTemplate(img, label) {
     const okSize = img.naturalWidth === 2339 && img.naturalHeight === 1654;
-    $('certTemplateStatus').replaceChildren(tag(okSize ? 'พร้อม' : 'ขนาดไม่ตรงเทมเพลตเดิม', okSize ? 'ok' : 'warn'), ` ${file.name} (${img.naturalWidth}×${img.naturalHeight})`);
+    $('certTemplateStatus').replaceChildren(tag(okSize ? 'พร้อม' : 'ขนาดไม่ตรงเทมเพลตเดิม', okSize ? 'ok' : 'warn'), ` ${label} (${img.naturalWidth}×${img.naturalHeight})`);
+  }
+
+  /** Uploads a new template to the system (once); every admin computer then uses it. */
+  async function loadTemplate(file) {
+    $('certTemplateStatus').textContent = 'กำลังอัปโหลดเทมเพลตเข้าระบบ…';
+    const img = await Photo.loadFile(file);
+    const r = await Api.call('saveTemplate', { kind: 'participation', data: await Photo.blobToBase64(file), name: file.name,
+      width: img.naturalWidth, height: img.naturalHeight, actor: App.actor() }, { timeoutMs: 120000 });
+    template = img;
+    templateSig = 'sha:' + r.sha;
+    await Store.loadState();
+    showTemplate(img, `${file.name} · เก็บในระบบแล้ว`);
     renderSummary();
   }
 
+  /** Loads the stored template the first time it is needed on this computer. */
+  let fetching = null;
+  function ensureTemplate() {
+    const stored = Store.val('template:participation');
+    if (!stored) {
+      if (!template) $('certTemplateStatus').textContent = 'ยังไม่มีเทมเพลตในระบบ — อัปโหลดครั้งเดียว';
+      return Promise.resolve(template);
+    }
+    if (template && templateSig === 'sha:' + stored.sha) return Promise.resolve(template);
+    if (!fetching) fetching = (async () => {
+      $('certTemplateStatus').textContent = 'กำลังโหลดเทมเพลตจากระบบ…';
+      try {
+        const r = await Api.call('getTemplate', { kind: 'participation' }, { timeoutMs: 120000 });
+        const img = await Photo.loadFile(Photo.base64ToBlob(r.data, r.mime));
+        template = img; templateSig = 'sha:' + r.sha;
+        showTemplate(img, `${stored.name || 'เทมเพลต'} · จากระบบ`);
+        renderSummary();
+        return img;
+      } finally { fetching = null; }
+    })();
+    return fetching;
+  }
+
   async function preview() {
-    if (!template) { $('certPreviewMsg').textContent = 'เลือกไฟล์เทมเพลตก่อน'; return; }
+    await ensureTemplate();
+    if (!template) { $('certPreviewMsg').textContent = 'ยังไม่มีเทมเพลต — อัปโหลดครั้งแรกในข้อ 1'; return; }
     const grid = $('certGrid');
     grid.querySelectorAll('img').forEach(i => URL.revokeObjectURL(i.src));
     grid.replaceChildren();
@@ -122,6 +156,8 @@
       // Fresh state first, so a second press after an interruption skips everything already uploaded.
       msg.textContent = 'กำลังตรวจว่าอัปโหลดอะไรไปแล้วบ้าง…';
       await Store.loadState();
+      await ensureTemplate();
+      if (!template) throw new Error('ยังไม่มีเทมเพลต — อัปโหลดครั้งแรกในข้อ 1');
       const p = plan();
       const items = p.flatMap(x => x.members.filter(m => m.status === 'cert').map(m => ({ ...m, team: x.team })));
       const todo = [];
@@ -201,8 +237,10 @@
   $('certOpen').addEventListener('click', () => guarded(toggleOpen, 'certPublishMsg'));
   $('certLinks').addEventListener('click', () => guarded(showLinks));
   // Only while this tab is open; opening the tab renders it.
-  Store.on(() => { if (!$('tab-certs').classList.contains('hidden')) renderSummary(); });
+  const certsVisible = () => !$('tab-certs').classList.contains('hidden');
+  const onShow = () => { renderSummary(); ensureTemplate().catch(err => { $('certTemplateStatus').textContent = Api.message(err); }); };
+  Store.on(() => { if (certsVisible()) onShow(); });
   const tabBtn = document.querySelector('#tabs button[data-tab="certs"]');
-  if (tabBtn) tabBtn.addEventListener('click', renderSummary);
+  if (tabBtn) tabBtn.addEventListener('click', onShow);
   window.CertsTab = { plan, render, _setTemplate: (img, sig) => { template = img; templateSig = sig; renderSummary(); } };
 })();
