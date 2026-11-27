@@ -124,7 +124,10 @@
       ? el('div', { cls: 'banner warn', text: `อ่านตารางสดไม่สำเร็จ (${Api.message({ code: r.liveError })}) — กำลังแสดงข้อมูลสำรอง ณ ${timeOf(r.readAt)}` })
       : el('div', { cls: 'banner ok', text: 'อ่านจากตารางรับสมัครตัวจริงเมื่อสักครู่ (ไม่ได้คัดลอกข้อมูล)' }));
     const stat = (label, value) => el('div', { cls: 'stat' }, el('b', { text: String(value) }), label);
-    const stats = [stat('ทีม', c.teams), stat('นักเรียน', c.students)];
+    const sc = schoolRows();
+    const teachers = new Set(Store.activeTeams().flatMap(t => (t.teacherNames || []).map(normName)));
+    const stats = [stat('ทีม', c.teams), stat('นักเรียน', c.students), stat('โรงเรียน', sc.length), stat('ครูผู้ประสานงาน', teachers.size)];
+    renderSchools(sc);
     LEVEL_ORDER.forEach(k => { const v = c.byLevel[k]; if (v) stats.push(stat(LEVEL_SHORT[k], `${v.teams} ทีม / ${v.students} คน`)); });
     stats.push(stat('ไม่มีคำนำหน้า', c.untitled), stat('ชื่อต้องตรวจ', c.check));
     if (c.unknownStatus) stats.push(stat('สถานะไม่รู้จัก', c.unknownStatus));
@@ -162,6 +165,33 @@
                   : 'ยังไม่มีการบันทึก จึงคิดว่ามาครบทุกคน')
       : 'บันทึกครบทุกทีมแล้ว (ตัวเลขจริง)' }));
     return box;
+  }
+
+  // ---- schools: one row per school name (as typed in the registration), with teams, students, levels, teachers
+  const normName = s => String(s || '').replace(/\s+/g, ' ').trim();
+  function schoolRows() {
+    const m = new Map();
+    Store.activeTeams().forEach(t => {
+      const k = normName(t.school) || '(ไม่ระบุโรงเรียน)';
+      const s = m.get(k) || { school: k, teams: 0, students: 0, levels: new Set(), teachers: new Set() };
+      s.teams++; s.students += t.members.length; s.levels.add(LEVEL_SHORT[t.levelKey] || t.levelKey);
+      (t.teacherNames || []).forEach(n => s.teachers.add(normName(n)));
+      m.set(k, s);
+    });
+    return [...m.values()].sort((a, b) => b.teams - a.teams || a.school.localeCompare(b.school, 'th'));
+  }
+  function renderSchools(rows) {
+    $('schools').replaceChildren(...rows.map((s, i) => el('tr', {},
+      el('td', { text: String(i + 1) }), el('td', { text: s.school }), el('td', { text: String(s.teams) }), el('td', { text: String(s.students) }),
+      el('td', { text: [...s.levels].join(', ') }), el('td', { cls: 'hide-sm', text: [...s.teachers].join(', ') }))));
+  }
+  function downloadSchoolsCsv() {
+    const q = v => '"' + String(v).replace(/"/g, '""') + '"';
+    const lines = [['ลำดับ', 'โรงเรียน', 'ทีม', 'นักเรียน', 'ระดับ', 'ครูผู้ประสานงาน'].map(q).join(',')]
+      .concat(schoolRows().map((s, i) => [i + 1, s.school, s.teams, s.students, [...s.levels].join(', '), [...s.teachers].join(', ')].map(q).join(',')));
+    const blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    const a = el('a', { attrs: { href: URL.createObjectURL(blob), download: 'รายชื่อโรงเรียน.csv' } });
+    document.body.appendChild(a); a.click(); a.remove();
   }
 
   function memberLine(m) {
@@ -410,6 +440,7 @@
   $('actorName').value = App.actor() === 'admin' ? '' : App.actor();
   $('saveConn').addEventListener('click', saveConnection);
   $('runTest').addEventListener('click', runTest);
+  $('schoolsCsv').addEventListener('click', downloadSchoolsCsv);
   $('refresh').addEventListener('click', refresh);
   let searchTimer = 0;
   $('ciSearch').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(renderCheckin, 150); });

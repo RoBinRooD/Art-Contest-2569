@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
   <title>แอดมิน — ระบบเกียรติบัตร 2569</title>
-  <link rel="stylesheet" href="css/app.css?v=20261127m">
+  <link rel="stylesheet" href="css/app.css?v=20261127n">
 </head>
 <body>
   <header class="top">
@@ -80,6 +80,14 @@
         <h2>รายชื่อจากตารางรับสมัคร (อ่านสด)</h2>
         <div id="rosterBanner"></div>
         <div class="stats" id="stats"></div>
+        <details id="schoolsBox" style="margin-top:12px">
+          <summary>รายชื่อโรงเรียน (จำนวนทีม · นักเรียน · ระดับ · ครูผู้ประสานงาน)</summary>
+          <div class="row" style="margin:8px 0"><button class="secondary small" id="schoolsCsv">ดาวน์โหลดเป็นไฟล์ Excel (CSV)</button></div>
+          <div style="overflow-x:auto"><table>
+            <thead><tr><th>#</th><th>โรงเรียน</th><th>ทีม</th><th>นักเรียน</th><th>ระดับ</th><th class="hide-sm">ครูผู้ประสานงาน</th></tr></thead>
+            <tbody id="schools"></tbody>
+          </table></div>
+        </details>
         <div id="problems" style="margin-top:12px"></div>
         <div style="overflow-x:auto; margin-top:12px">
           <table>
@@ -256,15 +264,15 @@
       </div>
     </section>
   </main>
-  <script src="config.js?v=20261127m"></script>
-  <script src="js/api.js?v=20261127m"></script>
-  <script src="js/common.js?v=20261127m"></script>
-  <script src="js/admin.js?v=20261127m"></script>
-  <script src="js/vendor/qrcode.js?v=20261127m"></script>
-  <script src="js/vendor/jsQR.js?v=20261127m"></script>
-  <script src="js/photo.js?v=20261127m"></script>
-  <script src="js/poster.js?v=20261127m"></script>
-  <script src="js/posters.js?v=20261127m"></script>
-  <script src="js/certs.js?v=20261127m"></script>
+  <script src="config.js?v=20261127n"></script>
+  <script src="js/api.js?v=20261127n"></script>
+  <script src="js/common.js?v=20261127n"></script>
+  <script src="js/admin.js?v=20261127n"></script>
+  <script src="js/vendor/qrcode.js?v=20261127n"></script>
+  <script src="js/vendor/jsQR.js?v=20261127n"></script>
+  <script src="js/photo.js?v=20261127n"></script>
+  <script src="js/poster.js?v=20261127n"></script>
+  <script src="js/posters.js?v=20261127n"></script>
+  <script src="js/certs.js?v=20261127n"></script>
 </body>
 </html>
