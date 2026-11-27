@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
   <title>แอดมิน — ระบบเกียรติบัตร 2569</title>
-  <link rel="stylesheet" href="css/app.css?v=20261127h">
+  <link rel="stylesheet" href="css/app.css?v=20261127i">
 </head>
 <body>
   <header class="top">
@@ -186,12 +186,12 @@
           <input type="file" id="certTemplate" accept="image/png,image/jpeg" class="hidden">
           <span class="muted" id="certTemplateStatus">ยังไม่ได้เลือก</span>
         </div>
-        <h3 style="margin-top:16px">ดึงเทมเพลตจาก Google Drive (แนะนำ)</h3>
-        <p class="muted">อัปโหลดโฟลเดอร์ "ข้อมูลลงระบบออนไล์" ขึ้น Google Drive ของบัญชีเดียวกับ Apps Script (ไม่ต้องแชร์) แล้ววางลิงก์โฟลเดอร์ที่นี่
-          ระบบจะหาเทมเพลตจากชื่อไฟล์ (ผู้เข้าร่วม / ชนะเลิศ / รองชนะเลิศอันดับ 1 / อันดับ 2 / ชมเชย) แล้วเก็บเข้าระบบให้เอง</p>
+        <h3 style="margin-top:16px">เทมเพลตจาก Google Drive (อัตโนมัติ)</h3>
+        <p class="muted">เปิดแท็บนี้แล้วระบบดึงเทมเพลตจากโฟลเดอร์ Drive ที่ตั้งไว้ใน Apps Script ให้เอง (หาจากชื่อไฟล์: ผู้เข้าร่วม / ผู้ได้รับรางวัล (PDF) / ชนะเลิศ / รองชนะเลิศ / ชมเชย)
+          ถ้าแก้ไฟล์ใน Drive แล้ว กด "ดึงเทมเพลตอีกครั้ง" · จะใช้โฟลเดอร์อื่น วางลิงก์ก่อนกด</p>
         <div class="row">
-          <input type="text" id="tplFolder" placeholder="ลิงก์โฟลเดอร์ Google Drive เช่น https://drive.google.com/drive/folders/…" autocomplete="off">
-          <button class="secondary" id="tplImport">ดึงเทมเพลต</button>
+          <input type="text" id="tplFolder" placeholder="(ไม่ต้องกรอก) ลิงก์โฟลเดอร์อื่นใน Google Drive" autocomplete="off">
+          <button class="secondary" id="tplImport">ดึงเทมเพลตอีกครั้ง</button>
         </div>
         <div id="tplResult" style="margin-top:8px"></div>
       </div>
@@ -253,15 +253,15 @@
       </div>
     </section>
   </main>
-  <script src="config.js?v=20261127h"></script>
-  <script src="js/api.js?v=20261127h"></script>
-  <script src="js/common.js?v=20261127h"></script>
-  <script src="js/admin.js?v=20261127h"></script>
-  <script src="js/vendor/qrcode.js?v=20261127h"></script>
-  <script src="js/vendor/jsQR.js?v=20261127h"></script>
-  <script src="js/photo.js?v=20261127h"></script>
-  <script src="js/poster.js?v=20261127h"></script>
-  <script src="js/posters.js?v=20261127h"></script>
-  <script src="js/certs.js?v=20261127h"></script>
+  <script src="config.js?v=20261127i"></script>
+  <script src="js/api.js?v=20261127i"></script>
+  <script src="js/common.js?v=20261127i"></script>
+  <script src="js/admin.js?v=20261127i"></script>
+  <script src="js/vendor/qrcode.js?v=20261127i"></script>
+  <script src="js/vendor/jsQR.js?v=20261127i"></script>
+  <script src="js/photo.js?v=20261127i"></script>
+  <script src="js/poster.js?v=20261127i"></script>
+  <script src="js/posters.js?v=20261127i"></script>
+  <script src="js/certs.js?v=20261127i"></script>
 </body>
 </html>

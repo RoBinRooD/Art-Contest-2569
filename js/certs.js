@@ -128,12 +128,13 @@
 
   async function importFromDrive() {
     const box = $('tplResult');
-    const link = $('tplFolder').value.trim() || (Store.val('setting:templateFolder') || '');
-    if (!link) { box.textContent = 'วางลิงก์โฟลเดอร์ Google Drive ก่อน'; return; }
-    box.textContent = 'กำลังอ่านโฟลเดอร์ใน Drive…';
+    // empty = the saved link, else the folder set in the Apps Script (CONFIG.TEMPLATE_FOLDER_ID)
+    const link = $('tplFolder').value.trim();
+    box.textContent = 'กำลังดึงเทมเพลตจาก Google Drive…';
     const r = await Api.call('importTemplates', { folder: link, actor: App.actor() }, { retries: 0, timeoutMs: 300000 });
     const cur = Store.state['setting:templateFolder'];
-    if (Store.val('setting:templateFolder') !== link) await Store.set('setting:templateFolder', link, cur ? cur.v : 0);
+    if (link && Store.val('setting:templateFolder') !== link) await Store.set('setting:templateFolder', link, cur ? cur.v : 0);
+    $('tplFolder').value = '';
     await Store.loadState();
     template = null; templateSig = '';           // the stored participation template may have changed
     await ensureTemplate();
@@ -484,7 +485,17 @@
   $('certLinks').addEventListener('click', () => guarded(showLinks));
   // Only while this tab is open; opening the tab renders it.
   const certsVisible = () => !$('tab-certs').classList.contains('hidden');
-  const onShow = () => { renderSummary(); ensureTemplate().catch(err => { $('certTemplateStatus').textContent = Api.message(err); }); };
+  // The first time the tab opens on this page load, the templates are pulled from Drive by themselves.
+  let autoImported = false;
+  const onShow = () => {
+    renderSummary();
+    if (!autoImported) {
+      autoImported = true;
+      guarded(importFromDrive, 'tplResult');
+      return;
+    }
+    ensureTemplate().catch(err => { $('certTemplateStatus').textContent = Api.message(err); });
+  };
   Store.on(() => { if (certsVisible()) onShow(); });
   const tabBtn = document.querySelector('#tabs button[data-tab="certs"]');
   if (tabBtn) tabBtn.addEventListener('click', onShow);
