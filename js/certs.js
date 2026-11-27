@@ -167,14 +167,16 @@
   }
   const tplForAward = a => (awardTpl['award-' + a] || awardTpl.award || {}).img || null;
 
-  /** Everyone who gets an award certificate: members of winning teams who were checked in as present. */
+  /** One award certificate per member of every winning team (a team of 3 = 3 certificates). Members recorded as
+   *  absent are still listed, flagged for the admin to check. */
   function awardItems() {
     const out = [];
     App.LEVEL_ORDER.forEach((level, li) => Store.awardRows(level).filter(r => r.team).forEach(r => {
       const t = Store.team(r.team);
       if (!t) return;
-      const present = new Set(App.presentMembers(t).map(m => m.sid));
-      t.members.forEach(m => out.push({ level, li, award: r.award, order: r.order, team: t, name: m.printName, present: present.has(m.sid) }));
+      const a = Store.attend(t.code);
+      const isAbsent = m => a.state === 'absent' || (a.state === 'partial' && a.absent.includes(m.sid));
+      t.members.forEach(m => out.push({ level, li, award: r.award, order: r.order, team: t, name: m.printName, absent: isAbsent(m) }));
     }));
     return out.sort((a, b) => a.li - b.li || a.award - b.award || a.order - b.order);
   }
@@ -185,7 +187,8 @@
     grid.replaceChildren();
     msg.textContent = 'กำลังโหลดเทมเพลตรางวัล…';
     await loadAwardTemplates();
-    const all = awardItems(), items = all.filter(i => i.present);
+    const items = awardItems();
+    if (!items.length) { msg.textContent = 'ยังไม่มีผลรางวัล — ใส่ผลที่แท็บผลรางวัลก่อน (หรือใช้ "เตรียมข้อมูลทดสอบ" เพื่อลอง)'; return; }
     const missingTpl = [...new Set(items.filter(i => !tplForAward(i.award)).map(i => AWARD_LABEL[i.award]))];
     let done = 0;
     for (const it of items) {
@@ -199,12 +202,13 @@
         cell.append(pic);
         if (r.small) cell.append(tag('ชื่อหรือโรงเรียนยาว ตัวอักษรถูกย่อ', 'warn'));
       } else cell.append(tag('ไม่มีเทมเพลตของรางวัลนี้', 'bad'));
+      if (it.absent) cell.append(tag('บันทึกว่าไม่มาแข่ง — ตรวจก่อนพิมพ์', 'warn'));
       cell.append(el('div', { cls: 'muted', text: `${App.LEVEL_SHORT[it.level]} · ${AWARD_LABEL[it.award]} · ${it.team.short} · ${it.team.school}` }));
       grid.appendChild(cell);
       if (++done % 10 === 0) msg.textContent = `กำลังสร้าง ${done}/${items.length} ใบ…`;
     }
-    const absent = all.length - items.length;
-    msg.textContent = `${items.length} ใบ (ทีมที่ได้รางวัล เฉพาะคนที่มาแข่ง${absent ? ` · ไม่ได้มา ${absent} คน ไม่ทำให้` : ''})` +
+    const teams = new Set(items.map(i => i.team.code)).size, absent = items.filter(i => i.absent).length;
+    msg.textContent = `${items.length} ใบ จาก ${teams} ทีมที่ได้รางวัล (ใบละคน)${absent ? ` · ${absent} คนบันทึกว่าไม่มา (มีป้ายเตือน)` : ''}` +
       (missingTpl.length ? ` · ⚠ ไม่มีเทมเพลต: ${missingTpl.join(', ')} — ดึงเทมเพลตจาก Drive ในข้อ 1` : ' · ตรวจชื่อและตำแหน่งทุกใบ');
   }
 
@@ -239,7 +243,8 @@
     const msg = $('awardMsg');
     if (!Store.locked()) throw new Error('ต้องล็อกผลรางวัลก่อนจึงส่งออกเกียรติบัตรรางวัลได้');
     await loadAwardTemplates();
-    const items = awardItems().filter(i => i.present);
+    const items = awardItems();
+    if (!items.length) throw new Error('ยังไม่มีผลรางวัล');
     const noTpl = items.filter(i => !tplForAward(i.award));
     if (noTpl.length) throw new Error('ยังไม่มีเทมเพลตของรางวัล: ' + [...new Set(noTpl.map(i => AWARD_LABEL[i.award]))].join(', '));
     let dir = null;
