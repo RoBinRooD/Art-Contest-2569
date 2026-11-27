@@ -108,6 +108,35 @@
     return fetching;
   }
 
+  // ---------------------------------------------------------------- templates from the owner's Google Drive folder
+  const KIND_LABEL = { participation: 'เกียรติบัตรผู้เข้าร่วม', award: 'เกียรติบัตรรางวัล (แบบเดียว)', 'award-1': 'ชนะเลิศ',
+    'award-2': 'รองชนะเลิศอันดับ 1', 'award-3': 'รองชนะเลิศอันดับ 2', 'award-4': 'ชมเชย' };
+  const STATUS_LABEL = { stored: ['เก็บเข้าระบบแล้ว', 'ok'], unchanged: ['มีอยู่แล้ว (ไม่เปลี่ยน)', 'ok'], duplicate_kind: ['ซ้ำประเภท — ใช้ไฟล์แรก', 'warn'],
+    not_template: ['ไม่ใช่เทมเพลต (ข้าม)', 'muted'], too_big: ['ไฟล์ใหญ่เกิน 15 MB', 'bad'] };
+
+  async function importFromDrive() {
+    const box = $('tplResult');
+    const link = $('tplFolder').value.trim() || (Store.val('setting:templateFolder') || '');
+    if (!link) { box.textContent = 'วางลิงก์โฟลเดอร์ Google Drive ก่อน'; return; }
+    box.textContent = 'กำลังอ่านโฟลเดอร์ใน Drive…';
+    const r = await Api.call('importTemplates', { folder: link, actor: App.actor() }, { retries: 0, timeoutMs: 300000 });
+    const cur = Store.state['setting:templateFolder'];
+    if (Store.val('setting:templateFolder') !== link) await Store.set('setting:templateFolder', link, cur ? cur.v : 0);
+    await Store.loadState();
+    template = null; templateSig = '';           // the stored participation template may have changed
+    await ensureTemplate();
+    const kinds = new Set(r.templates.filter(t => t.status === 'stored' || t.status === 'unchanged').map(t => t.kind));
+    box.replaceChildren(
+      el('div', { cls: 'banner ' + (kinds.has('participation') ? 'ok' : 'warn'), text: `โฟลเดอร์ "${r.folderName}": พบเทมเพลต ${kinds.size} แบบ — ${[...kinds].map(k => KIND_LABEL[k]).join(' · ') || 'ไม่พบ'}` }),
+      el('table', {}, el('tbody', {}, r.templates.map(t => el('tr', {},
+        el('td', { text: t.name }), el('td', { text: KIND_LABEL[t.kind] || '—' }),
+        el('td', {}, tag(...(STATUS_LABEL[t.status] || [t.status, 'muted']))))))),
+      ...r.notes.map(n => el('details', { attrs: { style: 'margin-top:8px' } },
+        el('summary', { text: `ไฟล์ตั้งค่า: ${n.name}` }),
+        el('button', { cls: 'link', text: 'คัดลอกข้อความ', on: { click: async () => { await navigator.clipboard.writeText(n.text); } } }),
+        el('pre', { attrs: { style: 'max-height:240px;overflow:auto;white-space:pre-wrap;font-size:12px' }, text: n.text }))));
+  }
+
   async function preview() {
     await ensureTemplate();
     if (!template) { $('certPreviewMsg').textContent = 'ยังไม่มีเทมเพลต — อัปโหลดครั้งแรกในข้อ 1'; return; }
@@ -233,6 +262,7 @@
 
   $('certTemplate').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f) guarded(() => loadTemplate(f), 'certTemplateStatus'); });
   $('certPreview').addEventListener('click', () => guarded(preview, 'certPreviewMsg'));
+  $('tplImport').addEventListener('click', () => guarded(importFromDrive, 'tplResult'));
   $('certPublish').addEventListener('click', () => guarded(publish, 'certPublishMsg'));
   $('certOpen').addEventListener('click', () => guarded(toggleOpen, 'certPublishMsg'));
   $('certLinks').addEventListener('click', () => guarded(showLinks));
