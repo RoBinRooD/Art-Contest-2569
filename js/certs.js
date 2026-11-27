@@ -501,10 +501,24 @@
   $('certLinks').addEventListener('click', () => guarded(showLinks));
   // Only while this tab is open; opening the tab renders it.
   const certsVisible = () => !$('tab-certs').classList.contains('hidden');
+  // Links to the four Drive folders (participation / award PDF / posters / templates), loaded once per page.
+  const FOLDER_LABEL = { participation: 'เกียรติบัตรผู้เข้าร่วม (ออนไลน์)', awardPdf: 'เกียรติบัตรรางวัล PDF', posters: 'ภาพประกาศรางวัล', templates: 'เทมเพลต (ห้ามแชร์)' };
+  let foldersShown = false;
+  async function showFolders() {
+    if (foldersShown) return;
+    foldersShown = true;
+    try {
+      const r = await Api.call('driveFolders', {}, { timeoutMs: 120000 });
+      $('driveFolders').replaceChildren(...Object.keys(FOLDER_LABEL).filter(k => r.folders[k]).map(k =>
+        el('a', { cls: 'btn ' + (k === 'templates' ? 'secondary' : ''), text: '📁 ' + FOLDER_LABEL[k], attrs: { href: r.folders[k].url, target: '_blank', rel: 'noopener', title: r.folders[k].name } })));
+    } catch (err) { foldersShown = false; $('driveFolders').textContent = Api.message(err); }
+  }
+
   // The first time the tab opens on this page load, the templates are pulled from Drive by themselves.
   let autoImported = false;
   const onShow = () => {
     renderSummary();
+    showFolders();
     if (!autoImported) {
       autoImported = true;
       guarded(importFromDrive, 'tplResult');
